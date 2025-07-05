@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bluetooth_printer/flutter_bluetooth_printer.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:shopapp/model/receipt_model.dart' as ReceiptModel;
 
 class ReceiptPrintScreen extends StatefulWidget {
+  final ReceiptModel.Receipt? receipt;
+  
+  const ReceiptPrintScreen({Key? key, this.receipt}) : super(key: key);
+  
   @override
   _ReceiptPrintScreenState createState() => _ReceiptPrintScreenState();
 }
@@ -44,10 +49,13 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
         .replaceAll(RegExp(r'[^\x00-\x7F]'), '?'); // Replace non-ASCII with ?
   }
 
-  // Method to create ESC/POS commands for the receipt with line numbers
+  // Method to create ESC/POS commands for the receipt without line numbers
   List<int> createReceiptCommands() {
     List<int> commands = [];
-    int lineNumber = 1;
+    
+    // Get receipt data or use defaults
+    final receiptData = widget.receipt;
+    final companyName = 'RAJAKUMARY SPICES';
     
     // Initialize printer
     commands.addAll(ESC_INIT);
@@ -56,135 +64,126 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
     commands.addAll(ESC_ALIGN_CENTER);
     commands.addAll(ESC_BOLD_ON);
     commands.addAll(ESC_SIZE_DOUBLE);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: RAJAKUMARY SPICES')));
+    commands.addAll(utf8.encode(cleanText(companyName)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: PRODUCER COMPANY')));
+    commands.addAll(utf8.encode(cleanText('PRODUCER COMPANY')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_BOLD_OFF);
     commands.addAll(ESC_SIZE_NORMAL);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Reg.No.IDK/TC-532/2014')));
+    commands.addAll(utf8.encode(cleanText('Reg.No.IDK/TC-532/2014')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: KULAPARACHAL, KURUVILACITY IDUKKI')));
+    commands.addAll(utf8.encode(cleanText('KULAPARACHAL, KURUVILACITY IDUKKI')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Kerala')));
+    commands.addAll(utf8.encode(cleanText('Kerala')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: 8078013210, 9746593141')));
+    commands.addAll(utf8.encode(cleanText('8078013210, 9746593141')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_NEWLINE);
     
-    // Line separator
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: --------------------------------')));
+    // Line separator - optimized for 3-inch thermal printer (32 chars)
+    commands.addAll(utf8.encode(cleanText('--------------------------------')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     // Receipt title
     commands.addAll(ESC_BOLD_ON);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Cardamom Receipt')));
+    commands.addAll(utf8.encode(cleanText('Cardamom Receipt')));
     commands.addAll(ESC_BOLD_OFF);
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     // Line separator
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: --------------------------------')));
+    commands.addAll(utf8.encode(cleanText('--------------------------------')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_NEWLINE);
     
     // Receipt details
     commands.addAll(ESC_ALIGN_LEFT);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Date: ${DateTime.now().toString().substring(0, 19)}')));
+    
+    // Date
+    String currentDate = DateTime.now().toString().substring(0, 19);
+    commands.addAll(utf8.encode(cleanText('Date: $currentDate')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
+    commands.addAll(ESC_NEWLINE);
+    
+    // Customer info - optimized for 3-inch thermal printer (32 chars width)
+    String customerName = receiptData?.party ?? 'Biju George Vettuchirayil';
+    // Truncate long customer names to fit 3-inch paper
+    if (customerName.length > 20) {
+      customerName = customerName.substring(0, 20) + '...';
+    }
+    String toLine = 'To:'.padRight(15) + customerName;
+    commands.addAll(utf8.encode(cleanText(toLine)));
+    commands.addAll(ESC_NEWLINE);
     
     commands.addAll(ESC_NEWLINE);
     
-    // Customer info
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: To: Biju George Vettuchirayil')));
+    String addressLine = 'Address:'.padRight(15) + 'N/A';
+    commands.addAll(utf8.encode(cleanText(addressLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Address: N/A')));
+    String compRefNo = receiptData?.compRefNo ?? '6900';
+    String compRefLine = 'Ref No:'.padRight(15) + compRefNo;
+    commands.addAll(utf8.encode(cleanText(compRefLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Computer Ref. No: 6900')));
+    String receiptDate = receiptData?.date ?? '11-06-2025';
+    String dateLine = 'Date:'.padRight(15) + receiptDate;
+    commands.addAll(utf8.encode(cleanText(dateLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
-    
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Dated: 11-06-2025')));
-    commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_NEWLINE);
     
-    // Transaction details
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Quantity Received: 56.0.00')));
+    // Transaction details - optimized for 3-inch printer
+    String qty = receiptData?.qty.toString() ?? '56.0.00';
+    String qtyLine = 'Qty Received:'.padRight(15) + '$qty KG';
+    commands.addAll(utf8.encode(cleanText(qtyLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Rate Per KG: 10.0')));
+    String rate = receiptData?.rate.toString() ?? '10.0';
+    String rateLine = 'Rate/KG:'.padRight(15) + 'Rs. $rate';
+    commands.addAll(utf8.encode(cleanText(rateLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Processing Charges: 560.0')));
+    String processingCharges = receiptData?.processingCharges.toString() ?? '560.0';
+    commands.addAll(ESC_BOLD_ON);
+    String chargesLine = 'Proc Charges:'.padRight(15) + 'Rs. $processingCharges';
+    commands.addAll(utf8.encode(cleanText(chargesLine)));
+    commands.addAll(ESC_BOLD_OFF);
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Number Of Bags: 1')));
+    String numberOfBags = receiptData?.numberOfBags.toString() ?? '1';
+    String bagsLine = 'No of Bags:'.padRight(15) + numberOfBags;
+    commands.addAll(utf8.encode(cleanText(bagsLine)));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_NEWLINE);
     
     // Line separator
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: --------------------------------')));
+    commands.addAll(utf8.encode(cleanText('--------------------------------')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_NEWLINE);
     
     // Footer
     commands.addAll(ESC_ALIGN_CENTER);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: For')));
+    commands.addAll(utf8.encode(cleanText('For')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_BOLD_ON);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: RAJAKUMARY SPICES PRODUCER')));
+    commands.addAll(utf8.encode(cleanText('RAJAKUMARY SPICES PRODUCER')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: COMPANY')));
+    commands.addAll(utf8.encode(cleanText('COMPANY')));
     commands.addAll(ESC_NEWLINE);
-    lineNumber++;
     
     commands.addAll(ESC_BOLD_OFF);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: Auth. Signatory')));
-    commands.addAll(ESC_NEWLINE);
-    lineNumber++;
-    
-    commands.addAll(ESC_NEWLINE);
-    
-    // Debug info
-    commands.addAll(ESC_ALIGN_LEFT);
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: DEBUG: Total lines printed: ${lineNumber-1}')));
-    commands.addAll(ESC_NEWLINE);
-    lineNumber++;
-    
-    commands.addAll(utf8.encode(cleanText('L$lineNumber: DEBUG: Print time: ${DateTime.now().millisecondsSinceEpoch}')));
+    commands.addAll(utf8.encode(cleanText('Auth. Signatory')));
     commands.addAll(ESC_NEWLINE);
     
     // Feed and cut
@@ -214,7 +213,7 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Receipt printed successfully with line numbers!'),
+            content: Text('Receipt printed successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -232,6 +231,16 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get receipt data for display
+    final receiptData = widget.receipt;
+    final customerName = receiptData?.party ?? 'Biju George Vettuchirayil';
+    final compRefNo = receiptData?.compRefNo ?? '6900';
+    final receiptDate = receiptData?.date ?? '11-06-2025';
+    final qty = receiptData?.qty.toString() ?? '56.0.00';
+    final rate = receiptData?.rate.toString() ?? '10.0';
+    final processingCharges = receiptData?.processingCharges.toString() ?? '560.0';
+    final numberOfBags = receiptData?.numberOfBags.toString() ?? '1';
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Print on 3 Inch'),
@@ -255,117 +264,151 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header with line numbers shown in preview
+                      // Header - Optimized for thermal printer
                       Center(
                         child: Text(
-                          'L1: RAJAKUMARY SPICES',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                          'RAJAKUMARY SPICES',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Center(
                         child: Text(
-                          'L2: PRODUCER COMPANY',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
+                          'PRODUCER COMPANY',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Center(
+                        child: Text(
+                          'Reg.No.IDK/TC-532/2014',
+                          style: TextStyle(fontSize: 14),
                         ),
                       ),
                       Center(
                         child: Text(
-                          'L3: Reg.No.IDK/TC-532/2014',
-                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                          'KULAPARACHAL, KURUVILACITY IDUKKI',
+                          style: TextStyle(fontSize: 14),
                         ),
                       ),
                       Center(
                         child: Text(
-                          'L4: KULAPARACHAL, KURUVILACITY IDUKKI',
-                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                          'Kerala',
+                          style: TextStyle(fontSize: 14),
                         ),
                       ),
                       Center(
                         child: Text(
-                          'L5: Kerala',
-                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                          '8078013210, 9746593141',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                         ),
                       ),
+                      Divider(thickness: 2, color: Colors.black),
                       Center(
                         child: Text(
-                          'L6: 8078013210, 9746593141',
-                          style: TextStyle(fontSize: 12, color: Colors.blue),
+                          'Cardamom Receipt',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      Divider(thickness: 2),
-                      Center(
-                        child: Text(
-                          'L7: Cardamom Receipt',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
+                      Divider(thickness: 2, color: Colors.black),
+                      SizedBox(height: 12),
+                      // Customer and receipt details - right-aligned values
+                      Container(
+                        width: double.infinity,
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('To:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Expanded(
+                                  child: Text(
+                                    customerName,
+                                    style: TextStyle(fontSize: 14),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Address:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text('N/A', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Ref No:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text(compRefNo, style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Date:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text(receiptDate, style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      Divider(thickness: 2),
+                      SizedBox(height: 12),
+                      Divider(thickness: 1, color: Colors.grey),
                       SizedBox(height: 8),
-                      Text('L8: Date: ${DateTime.now().toString().substring(0, 19)}', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                      Divider(thickness: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L9: To:', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('Biju George Vettuchirayil', style: TextStyle(fontSize: 11)),
-                        ],
+                      // Transaction details with right-aligned values
+                      Container(
+                        width: double.infinity,
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Qty Received:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text('$qty KG', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Rate/KG:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text('Rs. $rate', style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Proc Charges:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text('Rs. $processingCharges', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('No of Bags:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Text(numberOfBags, style: TextStyle(fontSize: 14)),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L10: Address :', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('N/A', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L11: Computer Ref. No', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('6900', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L12: Dated', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('11-06-2025', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L13: Quantity Received', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('56.0.00', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L14: Rate Per KG', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('10.0', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L15: Processing Charges', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('560.0', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('L16: Number Of Bags', style: TextStyle(fontSize: 11, color: Colors.blue)),
-                          Text('1', style: TextStyle(fontSize: 11)),
-                        ],
-                      ),
-                      Divider(thickness: 2),
-                      SizedBox(height: 10),
-                      Divider(thickness: 2),
-                      Center(child: Text('L17: For', style: TextStyle(fontSize: 11, color: Colors.blue))),
-                      Center(child: Text('L18: RAJAKUMARY SPICES PRODUCER', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue))),
-                      Center(child: Text('L19: COMPANY', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue))),
-                      Center(child: Text('L20: Auth. Signatory', style: TextStyle(fontSize: 11, color: Colors.blue))),
+                      SizedBox(height: 12),
+                      Divider(thickness: 2, color: Colors.black),
+                      SizedBox(height: 12),
+                      Center(child: Text('For', style: TextStyle(fontSize: 14))),
+                      SizedBox(height: 4),
+                      Center(child: Text('RAJAKUMARY SPICES PRODUCER', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                      Center(child: Text('COMPANY', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+                      SizedBox(height: 8),
+                      Center(child: Text('Auth. Signatory', style: TextStyle(fontSize: 14))),
+                      SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -378,22 +421,24 @@ class _ReceiptPrintScreenState extends State<ReceiptPrintScreen> {
               children: [
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: printManualReceipt,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      '🖨️ Print on 3 Inch',
+                    icon: Icon(Icons.print, size: 24),
+                    label: Text(
+                      'Print Receipt',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 3,
                     ),
                   ),
                 ),
