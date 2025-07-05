@@ -41,7 +41,9 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
   
   // Party selection
   List<dynamic> _partyList = [];
+  List<dynamic> _filteredPartyList = [];
   dynamic _selectedParty;
+  bool _showPartyDropdown = false;
 
   final TextEditingController _compRefController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -89,6 +91,7 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
       
       setState(() {
         _partyList = parties;
+        _filteredPartyList = parties; // Initialize filtered list
         
         // Try to select party based on widget parameters OR current receipt data
         String partyToFind = widget.party ?? _receipt.party;
@@ -119,6 +122,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
           }
         } else {
           print("📝 New receipt - no party pre-selected");
+          // Initialize filtered list for search
+          _filteredPartyList = _partyList;
         }
       });
       
@@ -366,112 +371,213 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
   }
 
   Widget _buildPartyField(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Party *',
-          style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.primary,
-            fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: () {
+        // Close dropdown when tapping outside
+        if (_showPartyDropdown) {
+          setState(() {
+            _showPartyDropdown = false;
+          });
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Party *',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-            borderRadius: BorderRadius.circular(12),
-            color: theme.colorScheme.surface,
-          ),
-          child: _isLoadingParties
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Loading parties...',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
-                      ),
-                    ],
-                  ),
-                )
-              : DropdownButtonFormField<dynamic>(
-                  value: _selectedParty,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                  isExpanded: true,
-                  items: _partyList.map<DropdownMenuItem<dynamic>>((party) {
-                    return DropdownMenuItem<dynamic>(
-                      value: party,
-                      child: Text(
-                        party['ByrNam'] ?? 'Unknown Party',
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (dynamic newValue) {
-                    setState(() {
-                      _selectedParty = newValue;
-                      if (newValue != null) {
-                        _receipt.party = newValue['ByrNam'] ?? '';
-                        _receipt.partyId = newValue['ID'] ?? 0;
-                        _partyController.text = _receipt.party;
-                      } else {
-                        _receipt.party = '';
-                        _receipt.partyId = 0;
-                        _partyController.text = '';
-                      }
-                    });
-                  },
-                  validator: (value) {
-                    return value == null ? 'Please select a party' : null;
-                  },
-                ),
-        ),
-        if (_selectedParty != null) ...[
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+              borderRadius: BorderRadius.circular(12),
+              color: theme.colorScheme.surface,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Party Details',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                if (_selectedParty['AccAddress'] != null && _selectedParty['AccAddress'].toString().isNotEmpty)
-                  Text(
-                    'Address: ${_selectedParty['AccAddress']}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                if (_selectedParty['ID'] != null)
-                  Text(
-                    'ID: ${_selectedParty['ID']}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-              ],
-            ),
+            child: _isLoadingParties
+                ? Container(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Loading parties...',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+                        ),
+                      ],
+                    ),
+                  )
+                : _buildPartySearchField(theme),
           ),
+          if (_selectedParty != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Party Details',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (_selectedParty['AccAddress'] != null && _selectedParty['AccAddress'].toString().isNotEmpty)
+                    Text(
+                      'Address: ${_selectedParty['AccAddress']}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  if (_selectedParty['ID'] != null)
+                    Text(
+                      'ID: ${_selectedParty['ID']}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPartySearchField(ThemeData theme) {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _partyController,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            hintText: 'Search and select party...',
+            suffixIcon: _selectedParty != null
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _selectedParty = null;
+                        _receipt.party = '';
+                        _receipt.partyId = 0;
+                        _partyController.clear();
+                        _showPartyDropdown = false;
+                        _filteredPartyList = _partyList;
+                      });
+                    },
+                  )
+                : const Icon(Icons.search),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _filterParties(value);
+              _showPartyDropdown = value.isNotEmpty;
+            });
+          },
+          onTap: () {
+            setState(() {
+              _showPartyDropdown = true;
+              if (_partyController.text.isEmpty) {
+                _filteredPartyList = _partyList;
+              }
+            });
+          },
+          validator: (value) {
+            return _selectedParty == null ? 'Please select a party' : null;
+          },
+        ),
+        if (_showPartyDropdown)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 200),
+            decoration: BoxDecoration(
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+              color: theme.colorScheme.surface,
+            ),
+            child: _filteredPartyList.isNotEmpty
+                ? ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _filteredPartyList.length,
+                    itemBuilder: (context, index) {
+                      final party = _filteredPartyList[index];
+                      return ListTile(
+                        title: Text(
+                          party['ByrNam'] ?? 'Unknown Party',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        subtitle: party['AccAddress'] != null && party['AccAddress'].toString().isNotEmpty
+                            ? Text(
+                                party['AccAddress'],
+                                style: theme.textTheme.bodySmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              )
+                            : null,
+                        trailing: Text(
+                          'ID: ${party['ID']}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                          ),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _selectedParty = party;
+                            _receipt.party = party['ByrNam'] ?? '';
+                            _receipt.partyId = party['ID'] ?? 0;
+                            _partyController.text = _receipt.party;
+                            _showPartyDropdown = false;
+                          });
+                        },
+                      );
+                    },
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'No parties found matching "${_partyController.text}"',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.secondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+          ),
       ],
     );
+  }
+
+  void _filterParties(String query) {
+    if (query.isEmpty) {
+      _filteredPartyList = _partyList;
+    } else {
+      _filteredPartyList = _partyList.where((party) {
+        final name = party['ByrNam']?.toString().toLowerCase() ?? '';
+        final address = party['AccAddress']?.toString().toLowerCase() ?? '';
+        final id = party['ID']?.toString() ?? '';
+        final queryLower = query.toLowerCase();
+        
+        return name.contains(queryLower) || 
+               address.contains(queryLower) || 
+               id.contains(queryLower);
+      }).toList();
+    }
   }
 
   Widget _buildQuantityRateRow(ThemeData theme) {

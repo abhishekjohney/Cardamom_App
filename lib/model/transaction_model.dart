@@ -35,36 +35,36 @@ class Transaction {
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
       gcrid: json['GCRID'] ?? 0,
-      receiveDate: json['ReceiveDate'] ?? '',
+      receiveDate: json['Cdate'] ?? '',
       compRefNo: json['CompRefNo']?.toString() ?? '',
       partyName: json['PartyName'] ?? '',
       partyId: json['PartyID'] ?? 0,
-      receivedQty: double.tryParse(json['ReceivedQty']?.toString() ?? '0') ?? 0,
+      receivedQty: double.tryParse(json['GCRecQty']?.toString() ?? '0') ?? 0,
       processingCharges:
-          double.tryParse(json['ProcessingCharges']?.toString() ?? '0') ?? 0,
-      stockEntryDate: json['StockEntryDate'] ?? '',
-      stockQty: double.tryParse(json['StockQty']?.toString() ?? '0') ?? 0,
-      prodRatio: double.tryParse(json['ProdRatio']?.toString() ?? '0') ?? 0,
+          double.tryParse(json['ProcAmount']?.toString() ?? '0') ?? 0,
+      stockEntryDate: json['StkDate'] ?? '',
+      stockQty: double.tryParse(json['StkQty']?.toString() ?? '0') ?? 0,
+      prodRatio: double.tryParse(json['ProcRatio']?.toString() ?? '0') ?? 0,
       delDate: json['DelDate'] ?? '',
       delQty: double.tryParse(json['DelQty']?.toString() ?? '0') ?? 0,
       transType: json['TransType'] ?? '',
       receiptAmount:
-          double.tryParse(json['ReceiptAmount']?.toString() ?? '0') ?? 0,
+          double.tryParse(json['ProcAmount']?.toString() ?? '0') ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'GCRID': gcrid,
-      'ReceiveDate': receiveDate,
+      'Cdate': receiveDate,
       'CompRefNo': compRefNo,
       'PartyName': partyName,
       'PartyID': partyId,
-      'ReceivedQty': receivedQty,
-      'ProcessingCharges': processingCharges,
-      'StockEntryDate': stockEntryDate,
-      'StockQty': stockQty,
-      'ProdRatio': prodRatio,
+      'GCRecQty': receivedQty,
+      'ProcAmount': processingCharges,
+      'StkDate': stockEntryDate,
+      'StkQty': stockQty,
+      'ProcRatio': prodRatio,
       'DelDate': delDate,
       'DelQty': delQty,
       'TransType': transType,

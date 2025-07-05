@@ -349,10 +349,7 @@ class ApiService {
           print("📋 Converting ${data.length} items to Transaction objects");
           try {
             final transactions = data
-                .map<Transaction>((item) {
-                  print("   Converting item: ${item.runtimeType} - ${item.toString().length > 100 ? item.toString().substring(0, 100) + '...' : item.toString()}");
-                  return Transaction.fromJson(item);
-                })
+                .map<Transaction>((item) => Transaction.fromJson(item))
                 .toList();
             print("✅ Successfully converted ${transactions.length} transactions");
             return transactions;
