@@ -37,15 +37,13 @@ class Dashboard extends StatelessWidget {
             child: Container(
               width: 420,
               constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height * 0.45,
-                maxHeight: MediaQuery.of(context).size.height * 0.8,
+                minHeight: MediaQuery.of(context).size.height * 0.55,
               ),
-              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 32),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   // Header
                   Container(
                     decoration: BoxDecoration(
@@ -153,7 +151,6 @@ class Dashboard extends StatelessWidget {
                     ),
                   ),
                 ],
-                ),
               ),
             ),
           ),

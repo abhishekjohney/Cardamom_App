@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'dart:async'; // Add for error handling
 import 'package:shopapp/controllers/logincontroller.dart';
-// import 'package:shopapp/views/dashboard.dart';
+import 'package:shopapp/views/dashboard.dart';
 import 'package:shopapp/views/auth/login.dart';
 import 'package:shopapp/views/cardamom/cardamomdashboard.dart';
 import 'package:shopapp/config/app_config.dart';
@@ -156,15 +156,15 @@ class _SplashScreenState extends State<SplashScreen>
         print("🌐 WEB: Using web-safe navigation from splash");
         // Handle web navigation carefully
         if (isLoggedIn) {
-          print("🌐 WEB: Navigating to CardamomDashboard");
+          print("🌐 WEB: Navigating to Dashboard");
           await Future.delayed(Duration(milliseconds: 300));
           if (Get.context != null) {
             Navigator.of(Get.context!).pushAndRemoveUntil(
-              MaterialPageRoute<void>(builder: (context) => CardamomDashboard()),
+              MaterialPageRoute<void>(builder: (context) => Dashboard()),
               (route) => false
             );
           } else {
-            Get.offAll(() => CardamomDashboard());
+            Get.offAll(() => Dashboard());
           }
         } else {
           print("🌐 WEB: Navigating to Login");
@@ -175,7 +175,7 @@ class _SplashScreenState extends State<SplashScreen>
         // Mobile navigation
         print("📱 MOBILE: Standard navigation from splash");
         if (isLoggedIn) {
-          Get.offAll(() => CardamomDashboard());
+          Get.offAll(() => Dashboard());
         } else {
           Get.offAll(() => FuturisticLoginPage());
         }
