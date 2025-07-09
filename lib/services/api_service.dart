@@ -25,7 +25,7 @@ class ApiService {
   
   /// Alternative base URL for main WebService (used for party list)
   static const String webServiceUrl = 
-      'https://cardamombe.magnussoftech.in/WebDataProcessingReact.aspx';
+      'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx';
       
   final Dio _dio = Dio();
 

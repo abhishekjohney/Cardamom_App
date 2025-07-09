@@ -126,7 +126,7 @@ class StockController extends GetxController {
   Future<void> fetchScannedItemdatabycode(String ReqItemCode) async {
     try {
       final response = await http.post(
-        Uri.parse('https://facebojyothi.magnussoftech.in/WebDataProcessingReact.aspx'),
+        Uri.parse('https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
           "title":"GetItemMasterByCode",

@@ -24,7 +24,7 @@ class AuthenticationService {
   static Future<Map<String, dynamic>> authenticateUser(String username, String password) async {
     try {
       print("🔐 Starting authentication for user: $username");
-      print("🌐 Using endpoint: ${ApiEndpoints.webServiceReact}");
+      print("🌐 Using endpoint: https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx");
       
       // Prepare credentials exactly like your Next.js app's successful login
       String processedPassword = password;
@@ -67,10 +67,12 @@ class AuthenticationService {
       
       print("📤 FormData created with keys: ${formData.fields.map((e) => e.key).join(', ')}");
       
-      print("🌐 Making POST request to: ${ApiEndpoints.webServiceReact}");
+      // Use the Cardamom API URL for login instead of the React service URL
+      const String loginApiUrl = 'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx';
+      print("🌐 Making POST request to: $loginApiUrl");
       
       final response = await _dio.post(
-        ApiEndpoints.webServiceReact,
+        loginApiUrl,
         data: formData,
         options: Options(
           headers: {

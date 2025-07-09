@@ -5,19 +5,19 @@ class AppConfig {
   static const Map<String, Map<String, String>> _config = {
     'development': {
       'baseUrl': 'https://cardamombe-dev.magnussoftech.in',
-      'webServiceReact': 'https://cardamombe-dev.magnussoftech.in/WebDataProcessingReact.aspx',
+      'webServiceReact': 'https://cardamombe-dev.magnussoftech.in/api/WebServiceCardamom.aspx',
       'imageBaseUrl': 'https://cardamombe-dev.magnussoftech.in/PICS/stock',
       'catalogImageUrl': 'https://cardamombe-dev.magnussoftech.in/CatLog',
     },
     'staging': {
       'baseUrl': 'https://cardamombe-staging.magnussoftech.in',
-      'webServiceReact': 'https://cardamombe-staging.magnussoftech.in/WebDataProcessingReact.aspx',
+      'webServiceReact': 'https://cardamombe-staging.magnussoftech.in/api/WebServiceCardamom.aspx',
       'imageBaseUrl': 'https://cardamombe-staging.magnussoftech.in/PICS/stock',
       'catalogImageUrl': 'https://cardamombe-staging.magnussoftech.in/CatLog',
     },
     'production': {
       'baseUrl': 'https://cardamombe.magnussoftech.in',
-      'webServiceReact': 'https://cardamombe.magnussoftech.in/WebDataProcessingReact.aspx',
+      'webServiceReact': 'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx',
       'imageBaseUrl': 'https://cardamombe.magnussoftech.in/PICS/stock',
       'catalogImageUrl': 'https://cardamombe.magnussoftech.in/CatLog',
     },

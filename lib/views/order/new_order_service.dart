@@ -6,7 +6,7 @@ import 'package:geolocator/geolocator.dart';
 
 class NewOrderService {
   static const String baseUrl =
-      'http://nwbo1.jubilyhrm.in/WebDataProcessingReact.aspx';
+      'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx';
 
   Future<List<Map<String, dynamic>>> fetchPartyList() async {
     try {
