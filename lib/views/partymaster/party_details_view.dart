@@ -4,8 +4,13 @@ import 'package:shopapp/model/party_list_model.dart';
 
 class PartyDetailsView extends StatelessWidget {
   final PartyItem party;
+  final List<Map<String, dynamic>>? paymentDetails;
 
-  const PartyDetailsView({super.key, required this.party});
+  const PartyDetailsView({
+    super.key, 
+    required this.party,
+    this.paymentDetails,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +67,13 @@ class PartyDetailsView extends StatelessWidget {
             _buildAdditionalInfoCard(theme),
             
             const SizedBox(height: 16),
+            
+            // Payment Details (if available)
+            if (paymentDetails != null && paymentDetails!.isNotEmpty)
+              _buildPaymentDetailsCard(theme),
+            
+            if (paymentDetails != null && paymentDetails!.isNotEmpty)
+              const SizedBox(height: 16),
             
             // Action Buttons
             _buildActionButtons(theme),
@@ -471,6 +483,177 @@ class PartyDetailsView extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildPaymentDetailsCard(ThemeData theme) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.account_balance_wallet,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Payment Details',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            if (paymentDetails != null && paymentDetails!.isNotEmpty) ...[
+              // Display the first party data (main account info)
+              if (paymentDetails!.first.containsKey('AccountLedger'))
+                _buildAccountLedger(theme, paymentDetails!.first),
+              
+              // Display basic account info
+              _buildAccountInfo(theme, paymentDetails!.first),
+            ] else
+              Text(
+                'No payment details available',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountInfo(ThemeData theme, Map<String, dynamic> accountData) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Account Information',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(Icons.account_tree, 'Account Type', accountData['LTYPE']?.toString() ?? 'N/A', theme),
+        _buildInfoRow(Icons.group, 'Group', accountData['GROUPS']?.toString() ?? 'N/A', theme),
+        _buildInfoRow(Icons.person, 'Customer Type', accountData['CUSTYPE']?.toString() ?? 'N/A', theme),
+        _buildInfoRow(Icons.trending_down, 'Opening Dr Balance', '₹${accountData['OPDRBLC']?.toString() ?? '0'}', theme),
+        _buildInfoRow(Icons.trending_up, 'Opening Cr Balance', '₹${accountData['OPCRBLC']?.toString() ?? '0'}', theme),
+        if (accountData['MaxCreditAmount'] != null && accountData['MaxCreditAmount'] > 0)
+          _buildInfoRow(Icons.credit_card, 'Max Credit Amount', '₹${accountData['MaxCreditAmount']}', theme),
+        if (accountData['MaxCreditDays'] != null && accountData['MaxCreditDays'] > 0)
+          _buildInfoRow(Icons.schedule, 'Max Credit Days', '${accountData['MaxCreditDays']} days', theme),
+      ],
+    );
+  }
+
+  Widget _buildAccountLedger(ThemeData theme, Map<String, dynamic> accountData) {
+    final ledgerList = accountData['AccountLedger'] as List<dynamic>? ?? [];
+    
+    if (ledgerList.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Transaction History',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Create a simple table for transactions
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(flex: 2, child: Text('Date', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold))),
+                    Expanded(flex: 3, child: Text('Description', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Debit', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Credit', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold))),
+                    Expanded(flex: 2, child: Text('Balance', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold))),
+                  ],
+                ),
+              ),
+              
+              // Transactions (limit to first 5 for display)
+              ...ledgerList.take(5).map((transaction) => _buildTransactionRow(theme, transaction)),
+              
+              if (ledgerList.length > 5)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '... and ${ledgerList.length - 5} more transactions',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildTransactionRow(ThemeData theme, Map<String, dynamic> transaction) {
+    final balance = (transaction['BALANCE'] ?? 0).toDouble();
+    final debitAmount = transaction['DRAMOUNT']?.toString() ?? '0';
+    final creditAmount = transaction['CRAMOUNT']?.toString() ?? '0';
+    final date = transaction['CT_DTStr']?.toString() ?? 'N/A';
+    final description = transaction['ACCOUNT']?.toString() ?? 'N/A';
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: theme.colorScheme.outline.withOpacity(0.2)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(flex: 2, child: Text(date, style: theme.textTheme.bodySmall)),
+          Expanded(flex: 3, child: Text(description, style: theme.textTheme.bodySmall)),
+          Expanded(flex: 2, child: Text('₹$debitAmount', style: theme.textTheme.bodySmall)),
+          Expanded(flex: 2, child: Text('₹$creditAmount', style: theme.textTheme.bodySmall)),
+          Expanded(
+            flex: 2, 
+            child: Text(
+              '₹${balance.toStringAsFixed(2)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: balance >= 0 ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

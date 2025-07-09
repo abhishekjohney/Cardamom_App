@@ -235,4 +235,32 @@ class PartyListController extends GetxController {
       'zeroBalance': zeroBalance,
     };
   }
+
+  // Fetch party payment details when party is clicked
+  Future<List<Map<String, dynamic>>> getPartyPaymentDetails(PartyItem party) async {
+    try {
+      print('🎯 === FETCHING PARTY PAYMENT DETAILS ===');
+      print('📋 Party: ${party.byrNam} (${party.byrCd})');
+      print('🔢 AccAutoID: ${party.accAutoID}');
+      
+      // Important: First ensure we have a fresh party list (this establishes session)
+      print('🔐 Ensuring session is active by calling party list first...');
+      await loadPartyList();
+      
+      print('✅ Session refreshed, now calling payment details...');
+      
+      final response = await _partyListService.getPartyPaymentDetails(
+        accName: party.byrNam,
+        accCode: party.accAutoID,
+      );
+      
+      print('✅ Successfully fetched payment details for ${party.byrNam}');
+      print('📊 Number of records: ${response.length}');
+      
+      return response;
+    } catch (e) {
+      print('❌ Error fetching payment details for ${party.byrNam}: $e');
+      rethrow;
+    }
+  }
 }

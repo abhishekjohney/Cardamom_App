@@ -3,7 +3,21 @@ import 'package:dio/dio.dart';
 import 'package:shopapp/model/party_list_model.dart';
 
 class PartyListService {
-  final Dio _dio = Dio();
+  static Dio? _sharedDio;
+  
+  // Use a shared Dio instance to maintain session cookies
+  Dio get _dio {
+    if (_sharedDio == null) {
+      _sharedDio = Dio();
+      // Configure the shared Dio instance
+      _sharedDio!.options.connectTimeout = Duration(milliseconds: 30000);
+      _sharedDio!.options.receiveTimeout = Duration(milliseconds: 30000);
+      _sharedDio!.options.sendTimeout = Duration(milliseconds: 30000);
+      
+      print('🔧 Created shared Dio instance for session management');
+    }
+    return _sharedDio!;
+  }
   
   /// Use the correct URL from React implementation
   static const String webServiceUrl = 
@@ -215,56 +229,102 @@ class PartyListService {
   }
 
   Future<List<Map<String, dynamic>>> getPartyPaymentDetails({
-    required String buyerName,
-    required String accAutoID,
+    required String accName,
+    required int accCode,
     String fromDate = '',
     String toDate = '',
   }) async {
     try {
+      print('🔐 === ENSURING SESSION FOR PAYMENT DETAILS ===');
+      
+      // First, ensure we have a valid session by calling the Party List API
+      // This is important because the server requires an active session
+      try {
+        print('🔄 Calling Party List API first to establish session...');
+        await getPartyList(); // This establishes the session
+        print('✅ Session established successfully');
+      } catch (sessionError) {
+        print('⚠️ Session establishment failed, but continuing: $sessionError');
+        // Continue anyway, maybe the session is already valid
+      }
+      
       final year = DateTime.now().year.toString();
       
+      // Create payload exactly like React implementation
       final payload = {
         'title': 'GetPartyPaymentDetails',
-        'description': 'Request For Party Payment Details',
+        'description': '',
         'ReqYear': year,
-        'ReqBuyerName': buyerName,
-        'ReqAccAutoID': accAutoID,
-        'ReqFromDate': fromDate,
+        'ReqAccName': accName,
+        'ReqAccCode': accCode,
+        'ReqFDate': fromDate,
         'ReqToDate': toDate,
       };
 
       print('🌐 === GET PARTY PAYMENT DETAILS API DEBUG ===');
       print('📍 URL: $webServiceUrl');
       print('📤 Payload: ${json.encode(payload)}');
+      print('🧾 Party Details: $accName (Code: $accCode)');
 
+      // Use the same approach as the working Party List API (FormData)
+      final formData = FormData.fromMap(payload);
+      
       final response = await _dio.post(
         webServiceUrl,
-        data: payload,
+        data: formData, // Use FormData like the working Party List API
         options: Options(
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
           },
+          followRedirects: false,
+          validateStatus: (status) => status! < 500,
           receiveTimeout: Duration(milliseconds: 30000),
           sendTimeout: Duration(milliseconds: 30000),
         ),
       );
 
       print('📥 Payment Details Response Status: ${response.statusCode}');
+      print('📥 Payment Details Response Headers: ${response.headers}');
 
       if (response.statusCode == 200) {
         String responseBody = response.data.toString();
         print('📄 Payment Details Response Length: ${responseBody.length}');
+        print('📄 Payment Details Response (first 1000 chars): ${responseBody.length > 1000 ? responseBody.substring(0, 1000) + "..." : responseBody}');
+        
+        // Check if response is HTML (authentication error)
+        if (responseBody.trim().toLowerCase().startsWith('<!doctype html') || 
+            responseBody.trim().toLowerCase().startsWith('<html')) {
+          print('❌ Still receiving HTML response - session issue persists');
+          throw Exception('Authentication session issue: Server returned HTML login page instead of JSON data');
+        }
         
         final endMarkerPos = responseBody.indexOf('||JasonEnd');
         if (endMarkerPos != -1) {
+          print('✂️ Found JasonEnd marker, trimming response');
           responseBody = responseBody.substring(0, endMarkerPos);
         }
         
-        final responseData = json.decode(responseBody);
-        print('✅ Payment Details Parsed Successfully');
-        return List<Map<String, dynamic>>.from(responseData);
+        try {
+          final responseData = json.decode(responseBody);
+          print('✅ Payment Details Parsed Successfully');
+          print('📊 Response Type: ${responseData.runtimeType}');
+          if (responseData is List) {
+            print('📊 Number of records: ${responseData.length}');
+          }
+          return List<Map<String, dynamic>>.from(responseData);
+        } catch (jsonError) {
+          print('❌ JSON Parse Error: $jsonError');
+          print('📄 Raw Response for debugging: $responseBody');
+          throw Exception('Failed to parse payment details response: $jsonError');
+        }
+      } else if (response.statusCode == 302) {
+        print('❌ 302 Redirect - authentication session expired or invalid');
+        throw Exception('Session expired: Server returned 302 redirect to login page');
       } else {
-        throw Exception('Failed to get payment details: HTTP ${response.statusCode}');
+        print('❌ HTTP Error: ${response.statusCode}');
+        print('📄 Error Response: ${response.data}');
+        throw Exception('HTTP Error: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Error getting payment details: $e');

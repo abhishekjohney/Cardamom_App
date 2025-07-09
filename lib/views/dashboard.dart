@@ -10,151 +10,243 @@ class Dashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceVariant,
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: theme.colorScheme.primary,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Text(
-          "Cardamom Management",
-          style: theme.textTheme.titleLarge?.copyWith(
-            color: theme.colorScheme.onPrimary,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.2,
+          "Dashboard",
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: theme.colorScheme.onSurface,
           ),
         ),
-        centerTitle: true,
-        elevation: 4,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-        ),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            onPressed: () {
+              // TODO: Add settings or logout functionality
+            },
+            icon: Icon(
+              Icons.account_circle_outlined,
+              color: theme.colorScheme.onSurface,
+              size: 28,
+            ),
+          ),
+        ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-          child: Material(
-            elevation: 16,
-            borderRadius: BorderRadius.circular(32),
-            color: theme.colorScheme.surface,
-            child: Container(
-              width: 420,
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height * 0.45,
-                maxHeight: MediaQuery.of(context).size.height * 0.8,
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primary.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 32),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                  // Header
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.18),
-                          blurRadius: 22,
-                          offset: const Offset(0, 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome Back!',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Manage your business efficiently',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                          ),
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(32),
-                    child: Icon(
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
                       Icons.spa_rounded,
-                      size: 72,
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Text(
-                    'Cardamom Management',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                      letterSpacing: 1.1,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Digitally manage your cardamom business with ease. Track receipts, parties, and transactions in a beautiful, modern dashboard.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.8),
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  
-                  // Navigation Buttons
-                  Column(
-                    children: [
-                      // Transaction Management Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.dashboard_customize),
-                          label: const Text('Transaction Management'),
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () {
-                            Get.to(() => const CardamomDashboard());
-                          },
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Party List Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.people),
-                          label: const Text('Party Management'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: theme.colorScheme.secondary,
-                            foregroundColor: theme.colorScheme.onSecondary,
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          onPressed: () {
-                            Get.to(() => const PartyListView());
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 28),
-                  AnimatedOpacity(
-                    opacity: 1.0,
-                    duration: const Duration(seconds: 2),
-                    child: Text(
-                      'Grow your business, the smart way! 🌱',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                        fontStyle: FontStyle.italic,
-                      ),
+                      size: 32,
+                      color: Colors.white,
                     ),
                   ),
                 ],
-                ),
               ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Features Grid
+            Text(
+              'Quick Actions',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Make responsive based on screen width
+                  final screenWidth = MediaQuery.of(context).size.width;
+                  final isTablet = screenWidth > 600;
+                  final crossAxisCount = isTablet ? 3 : 2;
+                  final childAspectRatio = isTablet ? 1.3 : 1.1;
+                  
+                  return GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: childAspectRatio,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildFeatureCard(
+                        context: context,
+                        title: 'Transactions',
+                        subtitle: 'Manage orders & receipts',
+                        icon: Icons.receipt_long_rounded,
+                        color: const Color(0xFF4CAF50),
+                        onTap: () => Get.to(() => const CardamomDashboard()),
+                      ),
+                      _buildFeatureCard(
+                        context: context,
+                        title: 'Parties',
+                        subtitle: 'Customer management',
+                        icon: Icons.people_rounded,
+                        color: const Color(0xFF2196F3),
+                        onTap: () => Get.to(() => const PartyListView()),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard({
+    required BuildContext context,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+    
+    // Responsive sizes
+    final iconSize = isTablet ? 48.0 : 40.0;
+    final iconContainerPadding = isTablet ? 20.0 : 16.0;
+    final cardPadding = isTablet ? 24.0 : 20.0;
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: theme.colorScheme.outline.withOpacity(0.1),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(cardPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon container with larger size
+                Container(
+                  padding: EdgeInsets.all(iconContainerPadding),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    size: iconSize,
+                    color: color,
+                  ),
+                ),
+                
+                SizedBox(height: isTablet ? 16 : 12),
+                
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                    fontSize: isTablet ? 18 : 16,
+                  ),
+                ),
+                
+                const SizedBox(height: 4),
+                
+                Text(
+                  subtitle,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    fontSize: isTablet ? 14 : 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
         ),

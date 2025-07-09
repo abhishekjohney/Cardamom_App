@@ -371,8 +371,52 @@ class _PartyListViewState extends State<PartyListView> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Get.to(() => PartyDetailsView(party: party));
+        onTap: () async {
+          print('🎯 === PARTY CARD CLICKED ===');
+          print('📋 Party: ${party.byrNam} (${party.byrCd})');
+          
+          try {
+            // Show loading indicator
+            Get.dialog(
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
+              barrierDismissible: false,
+            );
+            
+            // Fetch party payment details
+            final paymentDetails = await controller.getPartyPaymentDetails(party);
+            
+            // Close loading dialog
+            Get.back();
+            
+            print('✅ Payment details fetched, navigating to details view');
+            
+            // Navigate to party details view with the fetched data
+            Get.to(() => PartyDetailsView(
+              party: party,
+              paymentDetails: paymentDetails,
+            ));
+          } catch (e) {
+            // Close loading dialog
+            Get.back();
+            
+            print('❌ Error fetching payment details: $e');
+            
+            // Show error dialog
+            Get.dialog(
+              AlertDialog(
+                title: const Text('Error'),
+                content: Text('Failed to fetch payment details: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
