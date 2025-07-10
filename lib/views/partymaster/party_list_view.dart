@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:shopapp/controllers/party_list_controller.dart';
 import 'package:shopapp/model/party_list_model.dart';
 import 'package:shopapp/views/partymaster/party_details_view.dart';
+import 'package:shopapp/widgets/party_form_widget.dart';
 
 class PartyListView extends StatefulWidget {
   const PartyListView({super.key});
@@ -108,12 +109,64 @@ class _PartyListViewState extends State<PartyListView> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Navigate to add party screen
-          Get.snackbar(
-            'Feature Coming Soon',
-            'Add new party functionality will be available soon!',
-            backgroundColor: theme.colorScheme.primary,
-            colorText: theme.colorScheme.onPrimary,
+          // Show a dialog with the party form
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return Dialog(
+                insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Dialog header
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          topRight: Radius.circular(10),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Add New Party',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onPrimary,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close, color: theme.colorScheme.onPrimary),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Party form widget wrapped in a scrollable container
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: PartyFormWidget(
+                            onSuccess: () {
+                              // Refresh party list when new party is successfully added
+                              controller.refreshPartyList();
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
         label: const Text('Add Party'),

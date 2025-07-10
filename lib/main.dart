@@ -7,50 +7,69 @@ import 'package:shopapp/views/dashboard.dart';
 import 'package:shopapp/views/auth/login.dart';
 import 'package:shopapp/config/app_config.dart';
 
+import 'package:shopapp/utils/error_handler.dart';
+
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Print app configuration for debugging
-  AppConfig.printConfig();
-  
-  // Web platform specific initialization and error handling
-  if (kIsWeb) {
-    print("🌐 WEB: Initializing web platform");
+  // Wrap everything in a try-catch block to prevent app shutdown
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
     
-    // Add Flutter web error handling
-    FlutterError.onError = (FlutterErrorDetails details) {
-      FlutterError.presentError(details);
-      print("🚨 CRITICAL ERROR: ${details.exception}");
-      print("📋 STACK TRACE: ${details.stack}");
-    };
+    // Initialize error handling early
+    AppErrorHandler().initialize();
     
-    // Add zone-level error handling with retry capability
-    runZonedGuarded(() {
-      print("🌐 WEB: Starting web app with enhanced error handling");
+    // Print app configuration for debugging
+    AppConfig.printConfig();
+    
+    // Web platform specific initialization and error handling
+    if (kIsWeb) {
+      print("🌐 WEB: Initializing web platform");
       
       // Add special web initialization here if needed
-      runApp(MyApp());
+      AppErrorHandler.runWithErrorHandling(
+        ErrorBoundary(child: MyApp())
+      );
       
       print("✅ WEB: App started successfully");
-    }, (error, stackTrace) {
-      print("❌ UNCAUGHT ERROR: $error");
-      print("📋 STACK TRACE: $stackTrace");
+    } else {
+      print("📱 MOBILE: Starting app normally");
       
-      // Attempt recovery by resetting state and restarting
-      try {
-        print("🔄 WEB: Attempting recovery...");
-        Get.reset();
-        runApp(MyApp());
-      } catch (e) {
-        print("💥 WEB: Recovery failed: $e");
-      }
-    });
-  } else {
-    print("📱 MOBILE: Starting app normally");
-    runApp(MyApp());
+      // Run with error boundary and error handling
+      runApp(ErrorBoundary(child: MyApp()));
+    }
+  } catch (e, stackTrace) {
+    // Last resort error handler to prevent app shutdown
+    print("🚨 CRITICAL ERROR IN APP STARTUP: $e");
+    print("📋 STACK TRACE: $stackTrace");
+    
+    // Still try to show the app even after an error
+    runApp(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red, size: 60),
+              SizedBox(height: 16),
+              Text(
+                'App initialization error',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)
+              ),
+              SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  e.toString(),
+                  style: TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ));
   }
 }
-
 class MyApp extends StatelessWidget {
   final LoginController loginController = Get.put(LoginController());
 

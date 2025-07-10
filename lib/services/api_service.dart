@@ -25,22 +25,78 @@ class ApiService {
   
   /// Alternative base URL for main WebService (used for party list)
   static const String webServiceUrl = 
-      'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx';
+      'https://cardamombe.magnussoftech.in/api/WebServiceAccounts.aspx';
       
-  final Dio _dio = Dio();
-
+  /// Singleton instance for shared session management
   static final ApiService _instance = ApiService._internal();
-
-
-
-
+  
+  /// Factory constructor to return the singleton instance
   factory ApiService() {
     return _instance;
   }
-
-
-
+  
+  /// Internal constructor for singleton pattern
   ApiService._internal() {
+    _initDio();
+  }
+  
+  final Dio _dio = Dio();
+  
+  /// Initialize Dio with proper configurations
+  void _initDio() {
+    _setupHeaders();
+    
+    _dio.options.validateStatus = (status) {
+      return status! < 500; // Accept all status codes less than 500
+    };
+    
+    // Add timeouts to avoid hanging the app
+    _dio.options.connectTimeout = Duration(seconds: 15);
+    _dio.options.receiveTimeout = Duration(seconds: 15);
+    _dio.options.sendTimeout = Duration(seconds: 15);
+    
+    // Add error interceptor
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (error, handler) {
+          print('🔴 Dio Error: ${error.message}');
+          return handler.next(error);
+        },
+        onRequest: (request, handler) {
+          print('📤 Sending request: ${request.method} ${request.path}');
+          return handler.next(request);
+        },
+        onResponse: (response, handler) {
+          print('📥 Received response: ${response.statusCode}');
+          return handler.next(response);
+        },
+      )
+    );
+    
+    _dio.options.followRedirects = true;
+    _dio.options.receiveTimeout = const Duration(seconds: 30);
+    _dio.options.connectTimeout = const Duration(seconds: 30);
+    
+    // Enable cookies persistence
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (response, handler) {
+          print('📌 Response status: ${response.statusCode}');
+          if (response.headers.map.containsKey('set-cookie')) {
+            print('🍪 Cookies received: ${response.headers.map['set-cookie']?.length} cookies');
+          }
+          return handler.next(response);
+        },
+        onError: (error, handler) {
+          print('❌ API error: ${error.message}');
+          return handler.next(error);
+        },
+      ),
+    );
+  }
+
+  // Set standard headers
+  void _setupHeaders() {
     _dio.options.headers = {
       'Content-Type': 'multipart/form-data',
       'Accept': 'application/json',
@@ -655,6 +711,166 @@ class ApiService {
       print("✅ API connection test completed");
     } catch (e) {
       print("❌ API connection test failed: $e");
+    }
+  }
+
+  /// Add new party API method
+  /// Creates a new party or updates an existing one
+  /// 
+  /// @param party The Party object containing all party data
+  /// @return Map with success status, message and data
+  Future<Map<String, dynamic>> addParty(party) async {
+    try {
+      // First, make sure we have an active session by calling getPartyList
+      print('🔄 Establishing session by fetching party list first');
+      try {
+        await getPartyList();
+        print('✅ Session established successfully');
+      } catch (e) {
+        print('⚠️ Failed to establish session: $e');
+        // Continue anyway and let the main request handle any issues
+      }
+      
+      final FormData formData = FormData.fromMap({
+        'title': 'UpdateAccountBook',
+        'description': 'Request For Party Creation',
+        'ReqJSonData': jsonEncode([party.toJson()]),
+      });
+
+      print('🔍 Adding/updating party: ${party.partyName}');
+      print('📤 Request payload: ${formData.fields}');
+      
+      final response = await _dio.post(
+        webServiceUrl,
+        data: formData,
+        options: Options(
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Accept': 'application/json',
+          },
+          followRedirects: true,
+          validateStatus: (status) => status! < 500,
+        ),
+      );
+
+      // Process response
+      if (response.statusCode == 200) {
+        String responseData = response.data.toString();
+        print('📥 Response received: ${responseData.length} characters');
+        
+        // Check if response is HTML (indicates session expired or authentication issue)
+        if (responseData.trim().startsWith('<!DOCTYPE html') || 
+            responseData.trim().startsWith('<html')) {
+          print('⚠️ Received HTML response instead of JSON - Session may have expired');
+          
+          // Try to refresh the session by fetching the party list first
+          try {
+            print('🔄 Attempting to refresh session by fetching party list first');
+            await getPartyList();
+            
+            // Retry the add party request
+            final retryResponse = await _dio.post(
+              webServiceUrl,
+              data: formData,
+            );
+            
+            if (retryResponse.statusCode == 200) {
+              final retryData = retryResponse.data.toString();
+              
+              // If still HTML, we have a more serious authentication issue
+              if (retryData.trim().startsWith('<!DOCTYPE html') || 
+                  retryData.trim().startsWith('<html')) {
+                return {
+                  'success': false,
+                  'message': 'Session expired. Please log in again.',
+                  'data': null,
+                  'sessionExpired': true
+                };
+              }
+              
+              // Continue with the retry response
+              responseData = retryData;
+            }
+          } catch (e) {
+            return {
+              'success': false,
+              'message': 'Authentication error. Please log in again.',
+              'data': null,
+              'sessionExpired': true
+            };
+          }
+        }
+        
+        // Check for JasonEnd marker
+        final endIndex = responseData.indexOf('||JasonEnd');
+        String jsonString = responseData;
+        
+        if (endIndex > -1) {
+          jsonString = responseData.substring(0, endIndex);
+          print('✂️ Trimmed response: ${jsonString.length} characters');
+        }
+        
+        try {
+          final parsedData = json.decode(jsonString);
+          print('✅ Response parsed successfully');
+          
+          if (parsedData is List && parsedData.isNotEmpty) {
+            final responseItem = parsedData[0];
+            
+            if (responseItem['ErrorCode'] != null && responseItem['ErrorCode'].toString().isNotEmpty) {
+              return {
+                'success': false,
+                'message': responseItem['ErrorMessage'] ?? 'Unknown error occurred',
+                'data': null
+              };
+            } else {
+              return {
+                'success': true,
+                'message': responseItem['SuccessMessage'] ?? 'Party saved successfully',
+                'data': responseItem
+              };
+            }
+          } else {
+            return {
+              'success': true,
+              'message': 'Party saved successfully',
+              'data': parsedData
+            };
+          }
+        } catch (e) {
+          print('❌ Failed to parse response: $e');
+          
+          // If it contains HTML, it's likely an authentication/session issue
+          if (jsonString.contains('<!DOCTYPE html') || jsonString.contains('<html')) {
+            return {
+              'success': false,
+              'message': 'Session expired. Please log in again.',
+              'data': null,
+              'sessionExpired': true
+            };
+          }
+          
+          return {
+            'success': false,
+            'message': 'Failed to parse server response. Please try again.',
+            'data': null
+          };
+        }
+      } else {
+        print('❌ HTTP error: ${response.statusCode}');
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+          'data': null
+        };
+      }
+    } catch (e) {
+      print('❌ Error adding party: $e');
+      return {
+        'success': false,
+        'message': 'Network error: $e',
+        'data': null
+      };
     }
   }
 }
