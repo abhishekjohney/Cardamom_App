@@ -7,7 +7,7 @@ class PartyFormWidget extends StatefulWidget {
   final Party? initialData;
 
   const PartyFormWidget({
-    Key? key, 
+    Key? key,
     this.onSuccess,
     this.initialData,
   }) : super(key: key);
@@ -22,7 +22,13 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
   bool _isProcessing = false;
   bool _isCredit = false;
   String _selectedGroup = 'Sundry Debtors';
-  final List<String> _groupOptions = ['Sundry Debtors', 'Sundry Creditors', 'Staff', 'Bank Accounts', 'Cash in Hand'];
+  final List<String> _groupOptions = [
+    'Sundry Debtors',
+    'Sundry Creditors',
+    'Staff',
+    'Bank Accounts',
+    'Cash in Hand'
+  ];
 
   // Text controllers
   final _codeController = TextEditingController();
@@ -53,7 +59,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
       _pinCodeController.text = widget.initialData!.pinCode;
       _phoneController.text = widget.initialData!.phoneNumber;
       _contactPersonController.text = widget.initialData!.contactPerson;
-      
+
       // These fields aren't in the basic Party model but might be in an extended version
       // For now, we'll leave them with default values
     }
@@ -82,11 +88,11 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
-    
+
     setState(() {
       _isProcessing = true;
     });
-    
+
     // Create Party object with available fields
     final newParty = Party(
       id: widget.initialData?.id,
@@ -99,15 +105,15 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
       pinCode: _pinCodeController.text,
       balance: double.tryParse(_openingBalanceController.text) ?? 0.0,
     );
-    
+
     // Use additional fields in API call if needed
     // These can be added to the Party model if required
-    
+
     try {
       final result = await _apiService.addParty(newParty);
-      
+
       if (!mounted) return;
-      
+
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -116,19 +122,31 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
             duration: const Duration(seconds: 2),
           ),
         );
-        
+        // Show a success popup dialog
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Success'),
+            content: const Text('Party added successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
         // Call success callback if provided
         if (widget.onSuccess != null) {
           widget.onSuccess!();
         }
-        
         // Close the form
         Navigator.of(context).pop(true);
       } else {
         setState(() {
           _isProcessing = false;
         });
-        
+
         // Check if session expired
         if (result['sessionExpired'] == true) {
           // Show a more specific message for session expiry
@@ -138,8 +156,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
             builder: (context) => AlertDialog(
               title: const Text('Session Expired'),
               content: const Text(
-                'Your session has expired. Please log in again to continue.'
-              ),
+                  'Your session has expired. Please log in again to continue.'),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -169,7 +186,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
       setState(() {
         _isProcessing = false;
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
@@ -222,7 +239,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 2: Group Name and Opening Balance
             Row(
               children: [
@@ -280,7 +297,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 3: Address and GST No
             Row(
               children: [
@@ -302,15 +319,18 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 4: State and City/Location
             Row(
               children: [
                 Expanded(
                   child: _buildDropdown(
                     label: 'State',
-                    value: _stateController.text.isEmpty ? 'Select State' : _stateController.text,
-                    items: ['Select State', 'Kerala', 'Tamil Nadu', 'Karnataka'].map((String value) {
+                    value: _stateController.text.isEmpty
+                        ? 'Select State'
+                        : _stateController.text,
+                    items: ['Select State', 'Kerala', 'Tamil Nadu', 'Karnataka']
+                        .map((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Text(value),
@@ -336,7 +356,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 5: PIN Code and Max Credit Days
             Row(
               children: [
@@ -360,7 +380,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 6: Phone and Max Credit Amount
             Row(
               children: [
@@ -384,7 +404,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 7: Discount and Contact Person
             Row(
               children: [
@@ -407,7 +427,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               ],
             ),
             const SizedBox(height: 16),
-            
+
             // Row 8: Bank Account Details
             _buildTextField(
               controller: _bankDetailsController,
@@ -416,7 +436,7 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
               maxLines: 3,
             ),
             const SizedBox(height: 24),
-            
+
             // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -436,9 +456,12 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
                             strokeWidth: 2,
                           ),
                         )
-                      : Text(widget.initialData != null ? 'Update Party' : 'Save Party'),
+                      : Text(widget.initialData != null
+                          ? 'Update Party'
+                          : 'Save Party'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                   ),
                 ),
               ],
@@ -463,14 +486,15 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
         labelText: label,
         hintText: hint,
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: validator,
     );
   }
-  
+
   Widget _buildDropdown({
     required String label,
     required String value,
@@ -481,7 +505,8 @@ class _PartyFormWidgetState extends State<PartyFormWidget> {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(

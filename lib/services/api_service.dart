@@ -7,83 +7,82 @@ import 'package:shopapp/model/transaction_model.dart';
 import 'dart:convert';
 
 /// API Service for Cardamom Management System
-/// 
+///
 /// This service handles all cardamom-related API calls including:
 /// 1. Party List API - Get Party and Balance List
-/// 2. Get Green Cardamom Receipt List API  
+/// 2. Get Green Cardamom Receipt List API
 /// 3. Get Green Cardamom Receipt By Code API
 /// 4. Update Green Cardamom Receipt API
-/// 
+///
 /// All APIs follow the multipart/form-data pattern and use ||JasonEnd response parsing
-/// 
+///
 /// IMPORTANT: URLs updated to match the working React app endpoints.
 /// Previous URLs were returning 302 redirects, causing "Failed to process response" errors.
 class ApiService {
   /// Base URL for Cardamom WebService API (Updated to match React app)
   static const String baseUrl =
       'https://cardamombe.magnussoftech.in/api/WebServiceCardamom.aspx';
-  
+
   /// Alternative base URL for main WebService (used for party list)
-  static const String webServiceUrl = 
+  static const String webServiceUrl =
       'https://cardamombe.magnussoftech.in/api/WebServiceAccounts.aspx';
-      
+
   /// Singleton instance for shared session management
   static final ApiService _instance = ApiService._internal();
-  
+
   /// Factory constructor to return the singleton instance
   factory ApiService() {
     return _instance;
   }
-  
+
   /// Internal constructor for singleton pattern
   ApiService._internal() {
     _initDio();
   }
-  
+
   final Dio _dio = Dio();
-  
+
   /// Initialize Dio with proper configurations
   void _initDio() {
     _setupHeaders();
-    
+
     _dio.options.validateStatus = (status) {
       return status! < 500; // Accept all status codes less than 500
     };
-    
+
     // Add timeouts to avoid hanging the app
     _dio.options.connectTimeout = Duration(seconds: 15);
     _dio.options.receiveTimeout = Duration(seconds: 15);
     _dio.options.sendTimeout = Duration(seconds: 15);
-    
+
     // Add error interceptor
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onError: (error, handler) {
-          print('🔴 Dio Error: ${error.message}');
-          return handler.next(error);
-        },
-        onRequest: (request, handler) {
-          print('📤 Sending request: ${request.method} ${request.path}');
-          return handler.next(request);
-        },
-        onResponse: (response, handler) {
-          print('📥 Received response: ${response.statusCode}');
-          return handler.next(response);
-        },
-      )
-    );
-    
+    _dio.interceptors.add(InterceptorsWrapper(
+      onError: (error, handler) {
+        print('🔴 Dio Error: ${error.message}');
+        return handler.next(error);
+      },
+      onRequest: (request, handler) {
+        print('📤 Sending request: ${request.method} ${request.path}');
+        return handler.next(request);
+      },
+      onResponse: (response, handler) {
+        print('📥 Received response: ${response.statusCode}');
+        return handler.next(response);
+      },
+    ));
+
     _dio.options.followRedirects = true;
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.connectTimeout = const Duration(seconds: 30);
-    
+
     // Enable cookies persistence
     _dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (response, handler) {
           print('📌 Response status: ${response.statusCode}');
           if (response.headers.map.containsKey('set-cookie')) {
-            print('🍪 Cookies received: ${response.headers.map['set-cookie']?.length} cookies');
+            print(
+                '🍪 Cookies received: ${response.headers.map['set-cookie']?.length} cookies');
           }
           return handler.next(response);
         },
@@ -110,8 +109,9 @@ class ApiService {
   Future<Map<String, dynamic>> getFormattedResponse(FormData formData) async {
     try {
       print("📤 Making API request to: $baseUrl");
-      print("📤 FormData fields: ${formData.fields.map((e) => '${e.key}: ${e.value}').join(', ')}");
-      
+      print(
+          "📤 FormData fields: ${formData.fields.map((e) => '${e.key}: ${e.value}').join(', ')}");
+
       final response = await _dio.post(
         baseUrl,
         data: formData,
@@ -123,46 +123,40 @@ class ApiService {
       if (response.statusCode == 200) {
         String jsonString = response.data.toString();
         print("📥 Raw response length: ${jsonString.length}");
-        print("📥 Raw response preview: ${jsonString.length > 500 ? jsonString.substring(0, 500) + '...' : jsonString}");
-        
+        print(
+            "📥 Raw response preview: ${jsonString.length > 500 ? jsonString.substring(0, 500) + '...' : jsonString}");
+
         // Check for common response patterns
         bool hasJasonEnd = jsonString.contains("||JasonEnd");
         bool hasJSONData1 = jsonString.contains("JSONData1");
         bool startsWithBracket = jsonString.trim().startsWith('[');
         bool startsWithBrace = jsonString.trim().startsWith('{');
-        
+
         print("📊 Response analysis:");
         print("  - Has ||JasonEnd: $hasJasonEnd");
         print("  - Has JSONData1: $hasJSONData1");
         print("  - Starts with '[': $startsWithBracket");
         print("  - Starts with '{': $startsWithBrace");
-        
+
         int endIndex = jsonString.indexOf("||JasonEnd");
 
         if (endIndex == -1) {
-          print("⚠️ No ||JasonEnd delimiter found, treating as direct JSON response");
-          
+          print(
+              "⚠️ No ||JasonEnd delimiter found, treating as direct JSON response");
+
           // Try to parse as direct JSON response
           try {
             final directData = json.decode(jsonString);
-            print("✅ Direct JSON parsing successful: ${directData.runtimeType}");
-            
+            print(
+                "✅ Direct JSON parsing successful: ${directData.runtimeType}");
+
             // Check if it's already a list or contains data directly
             if (directData is List) {
-              return {
-                'success': true,
-                'data': directData
-              };
+              return {'success': true, 'data': directData};
             } else if (directData is Map && directData.containsKey('data')) {
-              return {
-                'success': true,
-                'data': directData['data']
-              };
+              return {'success': true, 'data': directData['data']};
             } else {
-              return {
-                'success': true,
-                'data': directData
-              };
+              return {'success': true, 'data': directData};
             }
           } catch (e) {
             print("❌ Direct JSON parsing failed: $e");
@@ -176,8 +170,9 @@ class ApiService {
 
         // Handle ||JasonEnd delimiter format
         jsonString = jsonString.substring(0, endIndex);
-        print("📥 Cleaned response: ${jsonString.length > 300 ? jsonString.substring(0, 300) + '...' : jsonString}");
-        
+        print(
+            "📥 Cleaned response: ${jsonString.length > 300 ? jsonString.substring(0, 300) + '...' : jsonString}");
+
         try {
           final userData = json.decode(jsonString);
           print("✅ JSON parsing successful: ${userData.runtimeType}");
@@ -188,25 +183,16 @@ class ApiService {
             if (userData[0] is Map && userData[0]['JSONData1'] != null) {
               final nestedData = json.decode(userData[0]['JSONData1']);
               print("✅ Extracted JSONData1: ${nestedData.runtimeType}");
-              return {
-                'success': true,
-                'data': nestedData
-              };
+              return {'success': true, 'data': nestedData};
             } else {
               // Return the list directly
               print("✅ Returning list directly");
-              return {
-                'success': true,
-                'data': userData
-              };
+              return {'success': true, 'data': userData};
             }
           } else if (userData is Map) {
             // Handle map response
             print("✅ Returning map response");
-            return {
-              'success': true,
-              'data': userData
-            };
+            return {'success': true, 'data': userData};
           } else {
             print("⚠️ Unexpected response format: ${userData.runtimeType}");
             return {
@@ -225,7 +211,8 @@ class ApiService {
           };
         }
       } else {
-        print("❌ HTTP Error: ${response.statusCode} - ${response.statusMessage}");
+        print(
+            "❌ HTTP Error: ${response.statusCode} - ${response.statusMessage}");
         return {
           'success': false,
           'error': 'HTTP ${response.statusCode}: ${response.statusMessage}',
@@ -245,7 +232,6 @@ class ApiService {
     }
   }
 
-
   /// 1. Party List API - Get Party and Balance List
   /// Equivalent to: listAPI.getPartyList()
   /// Backend: WebDataProcessingReact.aspx
@@ -253,15 +239,16 @@ class ApiService {
     try {
       // Get year from storage or use current year
       final currentYear = DateTime.now().year.toString();
-      
+
       print("🎭 PARTY LIST API CALL STARTING");
-      print("   URL: $webServiceUrl");
-      print("   Route parameter: ${route ?? 'Not specified'}");
+      print(
+          "   URL: https://cardamombe.magnussoftech.in/WebDataProcessingReact.aspx");
+      print("   Route parameter: " + (route ?? 'Not specified'));
       print("   Current year: $currentYear");
-      
+
       final formData = FormData.fromMap({
         'title': 'GetPartyNBalanceList',
-        'description': 'Request Bill By Code',
+        'description': 'Request  Bill By Code',
         'ReqType': '1',
         'ReqNofRcds': '',
         'ReqAcaStart': currentYear,
@@ -276,9 +263,9 @@ class ApiService {
         print("   ${field.key}: '${field.value}'");
       }
 
-      // Use webServiceReact endpoint for party list
+      // Use new WebDataProcessingReact endpoint for party list
       final response = await _dio.post(
-        webServiceUrl,
+        'https://cardamombe.magnussoftech.in/WebDataProcessingReact.aspx',
         data: formData,
         options: Options(
           headers: {
@@ -296,69 +283,83 @@ class ApiService {
       if (response.statusCode == 200) {
         String jsonString = response.data.toString();
         print("📥 Party List Raw Response Length: ${jsonString.length}");
-        print("📥 Party List Raw Response Preview: ${jsonString.length > 300 ? jsonString.substring(0, 300) + '...' : jsonString}");
-        
+        print(
+            "📥 Party List Raw Response Preview: ${jsonString.length > 300 ? jsonString.substring(0, 300) + '...' : jsonString}");
+
         int endIndex = jsonString.indexOf("||JasonEnd");
         print("📥 Party List ||JasonEnd found at index: $endIndex");
 
         if (endIndex != -1) {
           jsonString = jsonString.substring(0, endIndex);
-          print("📥 Party List Cleaned JSON: ${jsonString.length > 200 ? jsonString.substring(0, 200) + '...' : jsonString}");
-          
+          print(
+              "📥 Party List Cleaned JSON: ${jsonString.length > 200 ? jsonString.substring(0, 200) + '...' : jsonString}");
+
           final userData = json.decode(jsonString);
           print("📥 Party List Parsed Data Type: ${userData.runtimeType}");
-          print("📥 Party List Parsed Data: ${userData.toString().length > 500 ? userData.toString().substring(0, 500) + '...' : userData.toString()}");
+          print(
+              "📥 Party List Parsed Data: ${userData.toString().length > 500 ? userData.toString().substring(0, 500) + '...' : userData.toString()}");
 
           // Check for direct PartyList structure (as seen in debug output)
           if (userData is Map && userData.containsKey('PartyList')) {
             final partyList = userData['PartyList'];
             print("✅ Party List Found in Direct Structure:");
             print("   Type: ${partyList.runtimeType}");
-            print("   Length: ${partyList is List ? partyList.length : 'Not a list'}");
-            
+            print(
+                "   Length: ${partyList is List ? partyList.length : 'Not a list'}");
+
             if (partyList is List) {
               print("   First few parties:");
               for (int i = 0; i < 3 && i < partyList.length; i++) {
                 final party = partyList[i];
-                print("     [$i] ID: ${party['AccAutoID']}, Name: '${party['Byr_nam']}', Code: '${party['Byr_Cd']}'");
+                print(
+                    "     [$i] ID: ${party['AccAutoID']}, Name: '${party['Byr_nam']}', Code: '${party['Byr_Cd']}'");
               }
-              
+
               // Convert to expected format with ByrNam and ID fields
-              final convertedParties = partyList.map((party) => {
-                'ID': party['AccAutoID'],
-                'ByrNam': party['Byr_nam'],
-                'AccAddress': party['AccAddress'] ?? '',
-                'Balance': party['Balance'] ?? 0.0,
-                'Byr_Cd': party['Byr_Cd'],
-                'Groups': party['Groups'],
-                'PhoneNo': party['PhoneNo'] ?? '',
-              }).toList();
-              
-              print("✅ Converted ${convertedParties.length} parties to expected format");
+              final convertedParties = partyList
+                  .map((party) => {
+                        'ID': party['AccAutoID'],
+                        'ByrNam': party['Byr_nam'],
+                        'AccAddress': party['AccAddress'] ?? '',
+                        'Balance': party['Balance'] ?? 0.0,
+                        'Byr_Cd': party['Byr_Cd'],
+                        'Groups': party['Groups'],
+                        'PhoneNo': party['PhoneNo'] ?? '',
+                      })
+                  .toList();
+
+              print(
+                  "✅ Converted ${convertedParties.length} parties to expected format");
               return convertedParties;
             }
           }
           // Legacy check for JSONData1 structure
-          else if (userData is List && userData.isNotEmpty && userData[0]['JSONData1'] != null) {
+          else if (userData is List &&
+              userData.isNotEmpty &&
+              userData[0]['JSONData1'] != null) {
             final partyData = json.decode(userData[0]['JSONData1']);
             print("✅ Party List JSONData1 Extracted:");
             print("   Type: ${partyData.runtimeType}");
-            print("   Length: ${partyData is List ? partyData.length : 'Not a list'}");
+            print(
+                "   Length: ${partyData is List ? partyData.length : 'Not a list'}");
             if (partyData is List && partyData.isNotEmpty) {
               print("   First Party: ${partyData[0]}");
-              print("   Sample parties: ${partyData.take(3).map((p) => p['PartyName'] ?? p['Name'] ?? 'Unknown').join(', ')}");
+              print(
+                  "   Sample parties: ${partyData.take(3).map((p) => p['PartyName'] ?? p['Name'] ?? 'Unknown').join(', ')}");
             }
             return partyData;
           } else {
             print("⚠️ Party List: No PartyList or JSONData1 found");
             print("   UserData type: ${userData.runtimeType}");
-            print("   UserData keys: ${userData is Map ? userData.keys.toList() : 'Not a map'}");
+            print(
+                "   UserData keys: ${userData is Map ? userData.keys.toList() : 'Not a map'}");
           }
         } else {
           print("⚠️ Party List: No ||JasonEnd delimiter found in response");
         }
       } else {
-        print("❌ Party List HTTP Error: ${response.statusCode} - ${response.statusMessage}");
+        print(
+            "❌ Party List HTTP Error: ${response.statusCode} - ${response.statusMessage}");
       }
 
       print("🎭 PARTY LIST API CALL RETURNING EMPTY LIST");
@@ -385,33 +386,38 @@ class ApiService {
       print("   dateUpto: ${dateUpto ?? dateFrom}");
       print("   partyName: ${partyName ?? 'Not specified'}");
       print("   refNo: ${refNo ?? 'Not specified'}");
-      
+
       final formData = FormData.fromMap({
         'title': 'GetGreenCardamomReceiptList',
         'Reqdate1': dateFrom,
-        'Reqdate2': dateUpto ?? '',  // Send empty string if not provided (matching React app)
+        'Reqdate2': dateUpto ??
+            '', // Send empty string if not provided (matching React app)
         'Reqparty': partyName ?? '',
         'ReqRefNo': refNo ?? '',
       });
 
       final result = await getFormattedResponse(formData);
-      print("📋 API Result: ${result['success']} - ${result['error'] ?? 'Success'}");
+      print(
+          "📋 API Result: ${result['success']} - ${result['error'] ?? 'Success'}");
 
       if (result['success'] == true) {
         final data = result['data'];
         print("📋 Data type: ${data.runtimeType}");
-        
+
         if (data is List) {
           print("📋 Converting ${data.length} items to Transaction objects");
           try {
             final transactions = data
                 .map<Transaction>((item) => Transaction.fromJson(item))
                 .toList();
-            print("✅ Successfully converted ${transactions.length} transactions");
+            print(
+                "✅ Successfully converted ${transactions.length} transactions");
             return transactions;
           } catch (conversionError) {
-            print("❌ Error converting to Transaction objects: $conversionError");
-            print("   Sample data item: ${data.isNotEmpty ? data[0] : 'No data'}");
+            print(
+                "❌ Error converting to Transaction objects: $conversionError");
+            print(
+                "   Sample data item: ${data.isNotEmpty ? data[0] : 'No data'}");
             throw Exception('Data conversion error: $conversionError');
           }
         } else {
@@ -467,26 +473,23 @@ class ApiService {
     }
   }
 
-
   /// 4. Update Green Cardamom Receipt API
   /// Equivalent to: updateAPI.UpdateGreenCardamomReceipt(data)
   /// Backend: WebServiceCardamom.aspx
   Future<bool> updateGreenCardamomReceipt(Receipt receipt) async {
-    print(
-      "📋 Updating Green Cardamom Receipt:\n"
-      "CdateStr: ${receipt.date}\n"
-      "CompRefNo: ${receipt.compRefNo}\n"
-      "GCRID: ${receipt.gcrid}\n"
-      "GCRecQty: ${receipt.qty}\n"
-      "GCRecRemarks: ${receipt.remark}\n"
-      "PartyID: ${receipt.partyId}\n"
-      "PartyName: ${receipt.party}\n"
-      "ProcAmount: ${receipt.processingCharges}\n"
-      "Rate: ${receipt.rate}\n"
-      "ReceiptAmount: ${receipt.processingCharges}\n"
-      "ReceiptRemarks: ${receipt.remark}\n"
-      "RefNo: ${receipt.refNo}\n"
-    );
+    print("📋 Updating Green Cardamom Receipt:\n"
+        "CdateStr: ${receipt.date}\n"
+        "CompRefNo: ${receipt.compRefNo}\n"
+        "GCRID: ${receipt.gcrid}\n"
+        "GCRecQty: ${receipt.qty}\n"
+        "GCRecRemarks: ${receipt.remark}\n"
+        "PartyID: ${receipt.partyId}\n"
+        "PartyName: ${receipt.party}\n"
+        "ProcAmount: ${receipt.processingCharges}\n"
+        "Rate: ${receipt.rate}\n"
+        "ReceiptAmount: ${receipt.processingCharges}\n"
+        "ReceiptRemarks: ${receipt.remark}\n"
+        "RefNo: ${receipt.refNo}\n");
     try {
       // Convert date to the expected format with milliseconds
       DateTime parsedDate = DateTime.now();
@@ -494,18 +497,18 @@ class ApiService {
         List<String> dateParts = receipt.date.split('-');
         if (dateParts.length == 3) {
           parsedDate = DateTime(
-            int.parse(dateParts[2]), // year
-            int.parse(dateParts[1]), // month
-            int.parse(dateParts[0])  // day
-          );
+              int.parse(dateParts[2]), // year
+              int.parse(dateParts[1]), // month
+              int.parse(dateParts[0]) // day
+              );
         }
       } catch (e) {
         print("⚠️ Date parsing error, using current date: $e");
       }
-      
+
       int timestamp = parsedDate.millisecondsSinceEpoch;
       String formattedDate = "/Date($timestamp+0530)/";
-      
+
       final reqData = [
         {
           "ActionType": 1,
@@ -578,7 +581,6 @@ class ApiService {
     return updateGreenCardamomReceipt(newReceipt);
   }
 
-
   void showErrorSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -622,16 +624,20 @@ class ApiService {
         final day = int.parse(parts[0]);
         final month = int.parse(parts[1]);
         final year = int.parse(parts[2]);
-        
+
         // Basic validation
-        if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000) {
+        if (day >= 1 &&
+            day <= 31 &&
+            month >= 1 &&
+            month <= 12 &&
+            year >= 2000) {
           return dateStr;
         }
       }
-      
+
       // Try to parse other common formats and convert to DD-MM-YYYY
       DateTime? date;
-      
+
       // Try YYYY-MM-DD format
       if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateStr)) {
         date = DateTime.parse(dateStr);
@@ -639,22 +645,23 @@ class ApiService {
       // Try MM/DD/YYYY format
       else if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(dateStr)) {
         final parts = dateStr.split('/');
-        date = DateTime(int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
+        date = DateTime(
+            int.parse(parts[2]), int.parse(parts[0]), int.parse(parts[1]));
       }
       // Try DD/MM/YYYY format
       else if (RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(dateStr)) {
         final parts = dateStr.split('/');
-        date = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        date = DateTime(
+            int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
       }
-      
+
       if (date != null) {
         return formatDateForApi(date);
       }
-      
+
       // If all parsing fails, return current date
       print("⚠️ Date parsing failed for: $dateStr, using current date");
       return formatDateForApi(DateTime.now());
-      
     } catch (e) {
       print("❌ Date validation error: $e");
       return formatDateForApi(DateTime.now());
@@ -665,17 +672,18 @@ class ApiService {
   Future<void> testApiConnection() async {
     try {
       print("🧪 Testing API connection...");
-      
+
       final formData = FormData.fromMap({
         'title': 'GetGreenCardamomReceiptList',
-        'Reqdate1': '18-06-2025',  // Using same date as React app for consistency
-        'Reqdate2': '',            // Empty string like React app
+        'Reqdate1':
+            '18-06-2025', // Using same date as React app for consistency
+        'Reqdate2': '', // Empty string like React app
         'Reqparty': '',
         'ReqRefNo': '',
       });
 
       print("🌐 Making test request to: $baseUrl");
-      
+
       final response = await _dio.post(
         baseUrl,
         data: formData,
@@ -685,7 +693,8 @@ class ApiService {
             'Accept': 'application/json',
           },
           followRedirects: true,
-          validateStatus: (status) => true, // Accept all status codes for debugging
+          validateStatus: (status) =>
+              true, // Accept all status codes for debugging
         ),
       );
 
@@ -693,21 +702,23 @@ class ApiService {
       print("   Status Code: ${response.statusCode}");
       print("   Status Message: ${response.statusMessage}");
       print("   Headers: ${response.headers}");
-      
+
       if (response.data != null) {
         String responseStr = response.data.toString();
         print("   Response Length: ${responseStr.length}");
-        print("   Response Preview: ${responseStr.length > 200 ? responseStr.substring(0, 200) + '...' : responseStr}");
+        print(
+            "   Response Preview: ${responseStr.length > 200 ? responseStr.substring(0, 200) + '...' : responseStr}");
         print("   Contains ||JasonEnd: ${responseStr.contains('||JasonEnd')}");
-        
+
         if (responseStr.contains('||JasonEnd')) {
           int endIndex = responseStr.indexOf("||JasonEnd");
           String cleanResponse = responseStr.substring(0, endIndex);
           print("   Clean Response Length: ${cleanResponse.length}");
-          print("   Clean Response Preview: ${cleanResponse.length > 200 ? cleanResponse.substring(0, 200) + '...' : cleanResponse}");
+          print(
+              "   Clean Response Preview: ${cleanResponse.length > 200 ? cleanResponse.substring(0, 200) + '...' : cleanResponse}");
         }
       }
-      
+
       print("✅ API connection test completed");
     } catch (e) {
       print("❌ API connection test failed: $e");
@@ -716,7 +727,7 @@ class ApiService {
 
   /// Add new party API method
   /// Creates a new party or updates an existing one
-  /// 
+  ///
   /// @param party The Party object containing all party data
   /// @return Map with success status, message and data
   Future<Map<String, dynamic>> addParty(party) async {
@@ -730,7 +741,7 @@ class ApiService {
         print('⚠️ Failed to establish session: $e');
         // Continue anyway and let the main request handle any issues
       }
-      
+
       final FormData formData = FormData.fromMap({
         'title': 'UpdateAccountBook',
         'description': 'Request For Party Creation',
@@ -739,7 +750,7 @@ class ApiService {
 
       print('🔍 Adding/updating party: ${party.partyName}');
       print('📤 Request payload: ${formData.fields}');
-      
+
       final response = await _dio.post(
         webServiceUrl,
         data: formData,
@@ -757,28 +768,30 @@ class ApiService {
       if (response.statusCode == 200) {
         String responseData = response.data.toString();
         print('📥 Response received: ${responseData.length} characters');
-        
+
         // Check if response is HTML (indicates session expired or authentication issue)
-        if (responseData.trim().startsWith('<!DOCTYPE html') || 
+        if (responseData.trim().startsWith('<!DOCTYPE html') ||
             responseData.trim().startsWith('<html')) {
-          print('⚠️ Received HTML response instead of JSON - Session may have expired');
-          
+          print(
+              '⚠️ Received HTML response instead of JSON - Session may have expired');
+
           // Try to refresh the session by fetching the party list first
           try {
-            print('🔄 Attempting to refresh session by fetching party list first');
+            print(
+                '🔄 Attempting to refresh session by fetching party list first');
             await getPartyList();
-            
+
             // Retry the add party request
             final retryResponse = await _dio.post(
               webServiceUrl,
               data: formData,
             );
-            
+
             if (retryResponse.statusCode == 200) {
               final retryData = retryResponse.data.toString();
-              
+
               // If still HTML, we have a more serious authentication issue
-              if (retryData.trim().startsWith('<!DOCTYPE html') || 
+              if (retryData.trim().startsWith('<!DOCTYPE html') ||
                   retryData.trim().startsWith('<html')) {
                 return {
                   'success': false,
@@ -787,7 +800,7 @@ class ApiService {
                   'sessionExpired': true
                 };
               }
-              
+
               // Continue with the retry response
               responseData = retryData;
             }
@@ -800,33 +813,36 @@ class ApiService {
             };
           }
         }
-        
+
         // Check for JasonEnd marker
         final endIndex = responseData.indexOf('||JasonEnd');
         String jsonString = responseData;
-        
+
         if (endIndex > -1) {
           jsonString = responseData.substring(0, endIndex);
           print('✂️ Trimmed response: ${jsonString.length} characters');
         }
-        
+
         try {
           final parsedData = json.decode(jsonString);
           print('✅ Response parsed successfully');
-          
+
           if (parsedData is List && parsedData.isNotEmpty) {
             final responseItem = parsedData[0];
-            
-            if (responseItem['ErrorCode'] != null && responseItem['ErrorCode'].toString().isNotEmpty) {
+
+            if (responseItem['ErrorCode'] != null &&
+                responseItem['ErrorCode'].toString().isNotEmpty) {
               return {
                 'success': false,
-                'message': responseItem['ErrorMessage'] ?? 'Unknown error occurred',
+                'message':
+                    responseItem['ErrorMessage'] ?? 'Unknown error occurred',
                 'data': null
               };
             } else {
               return {
                 'success': true,
-                'message': responseItem['SuccessMessage'] ?? 'Party saved successfully',
+                'message': responseItem['SuccessMessage'] ??
+                    'Party saved successfully',
                 'data': responseItem
               };
             }
@@ -839,9 +855,10 @@ class ApiService {
           }
         } catch (e) {
           print('❌ Failed to parse response: $e');
-          
+
           // If it contains HTML, it's likely an authentication/session issue
-          if (jsonString.contains('<!DOCTYPE html') || jsonString.contains('<html')) {
+          if (jsonString.contains('<!DOCTYPE html') ||
+              jsonString.contains('<html')) {
             return {
               'success': false,
               'message': 'Session expired. Please log in again.',
@@ -849,7 +866,7 @@ class ApiService {
               'sessionExpired': true
             };
           }
-          
+
           return {
             'success': false,
             'message': 'Failed to parse server response. Please try again.',
@@ -866,11 +883,7 @@ class ApiService {
       }
     } catch (e) {
       print('❌ Error adding party: $e');
-      return {
-        'success': false,
-        'message': 'Network error: $e',
-        'data': null
-      };
+      return {'success': false, 'message': 'Network error: $e', 'data': null};
     }
   }
 }
