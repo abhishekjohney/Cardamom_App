@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shopapp/utils/api_endpoints.dart';
 import 'package:shopapp/views/auth/login.dart';
-import 'package:shopapp/views/cardamom/cardamomdashboard.dart'; // Import CardamomDashboard
+import 'package:shopapp/views/dashboard.dart'; // Import our modern Dashboard
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class LoginController extends GetxController {
@@ -89,8 +89,8 @@ class LoginController extends GetxController {
         
         print("DEBUG About to navigate to Dashboard...");
         
-        // Instead, always navigate to CardamomDashboard
-        Get.offAll(() => CardamomDashboard());
+        // Navigate to our modern Dashboard instead of old CardamomDashboard
+        Get.offAll(() => Dashboard());
         
         print("SUCCESS Navigation completed successfully!");
         
@@ -148,8 +148,8 @@ class LoginController extends GetxController {
         _fetchPartyListAsync();
         Get.snackbar("Success", "Welcome "+(authResult['user']['name'] ?? username.value),
             snackPosition: SnackPosition.BOTTOM);
-        // Navigate directly to CardamomDashboard after login
-        Get.offAll(() => CardamomDashboard());
+        // Navigate directly to the modern Dashboard after login
+        Get.offAll(() => Dashboard());
       } else {
         Get.snackbar("Error", authResult['message'] ?? "Authentication failed",
             snackPosition: SnackPosition.BOTTOM);
@@ -166,8 +166,8 @@ class LoginController extends GetxController {
     bool isLoggedIn = await SessionManager.isSessionValid();
 
     if (isLoggedIn) {
-      // Navigate to CardamomDashboard only
-      Get.offAll(() => CardamomDashboard());
+      // Navigate to modern Dashboard only
+      Get.offAll(() => Dashboard());
     } else {
       // Navigate to Login
       Get.offAll(() => FuturisticLoginPage());
@@ -233,12 +233,12 @@ class LoginController extends GetxController {
     Get.snackbar('Info', 'Profile update feature will be implemented with API endpoint');
   }
 
-  // Force rebuild the app to navigate to CardamomDashboard safely on web
+  // Force rebuild the app to navigate to Dashboard safely on web
   void _forceRebuildApp() {
     print("DEBUG WEB: Forcing app rebuild as last resort");
     try {
       Get.reset();
-      Get.offAll(() => CardamomDashboard());
+      Get.offAll(() => Dashboard());
       print("DEBUG WEB: App rebuild completed");
     } catch (e) {
       print("ERROR WEB: App rebuild failed: $e");

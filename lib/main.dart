@@ -5,7 +5,6 @@ import 'dart:async'; // Add for error handling
 import 'package:shopapp/controllers/logincontroller.dart';
 import 'package:shopapp/views/dashboard.dart';
 import 'package:shopapp/views/auth/login.dart';
-import 'package:shopapp/views/cardamom/cardamomdashboard.dart';
 import 'package:shopapp/config/app_config.dart';
 
 void main() async {

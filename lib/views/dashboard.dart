@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:shopapp/views/cardamom/cardamomdashboard.dart';
 import 'package:shopapp/views/partymaster/party_list_view.dart';
 
 class Dashboard extends StatelessWidget {
@@ -136,7 +135,11 @@ class Dashboard extends StatelessWidget {
                         subtitle: 'Manage orders & receipts',
                         icon: Icons.receipt_long_rounded,
                         color: const Color(0xFF4CAF50),
-                        onTap: () => Get.to(() => const CardamomDashboard()),
+                        onTap: () {
+                          // Handle transactions directly here instead of going to old dashboard
+                          Get.snackbar("Coming Soon", "Transaction management is being updated",
+                            snackPosition: SnackPosition.BOTTOM);
+                        },
                       ),
                       _buildFeatureCard(
                         context: context,
