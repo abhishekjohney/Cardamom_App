@@ -26,12 +26,12 @@ class _PartyListViewState extends State<PartyListView> {
     super.initState();
     print('🎯 === PARTY LIST VIEW INITIALIZED ===');
     print('📱 PartyListView initState called');
-    
+
     // Initialize search controller
     searchController.addListener(() {
       controller.searchParties(searchController.text);
     });
-    
+
     print('🔍 Search controller initialized');
   }
 
@@ -44,7 +44,7 @@ class _PartyListViewState extends State<PartyListView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surfaceVariant,
       appBar: AppBar(
@@ -59,49 +59,50 @@ class _PartyListViewState extends State<PartyListView> {
         elevation: 4,
         actions: [
           Obx(() => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.onPrimary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Total: ${controller.filteredPartyList.length}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                    fontWeight: FontWeight.w600,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onPrimary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Total: ${controller.filteredPartyList.length}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          )),
+              )),
         ],
       ),
       body: Column(
         children: [
           // Search and Filter Header
           _buildSearchAndFilterHeader(theme),
-          
+
           // Summary Stats
           _buildSummaryStats(theme),
-          
+
           // Party List
           Expanded(
             child: Obx(() {
               if (controller.isLoading) {
                 return _buildLoadingState(theme);
               }
-              
+
               if (controller.error.isNotEmpty) {
                 return _buildErrorState(theme);
               }
-              
+
               if (controller.filteredPartyList.isEmpty) {
                 return _buildEmptyState(theme);
               }
-              
+
               return _buildPartyList(theme);
             }),
           ),
@@ -114,7 +115,8 @@ class _PartyListViewState extends State<PartyListView> {
             context: context,
             builder: (BuildContext context) {
               return Dialog(
-                insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                insetPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -142,13 +144,14 @@ class _PartyListViewState extends State<PartyListView> {
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close, color: theme.colorScheme.onPrimary),
+                            icon: Icon(Icons.close,
+                                color: theme.colorScheme.onPrimary),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Party form widget wrapped in a scrollable container
                     Flexible(
                       child: SingleChildScrollView(
@@ -211,12 +214,13 @@ class _PartyListViewState extends State<PartyListView> {
               ),
               filled: true,
               fillColor: theme.colorScheme.surfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Filter Row
           Row(
             children: [
@@ -224,86 +228,91 @@ class _PartyListViewState extends State<PartyListView> {
               Expanded(
                 flex: 1,
                 child: Obx(() => DropdownButtonFormField<String>(
-                  value: controller.selectedGroup,
-                  decoration: InputDecoration(
-                    labelText: 'Group',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    isDense: true,
-                  ),
-                  isExpanded: true,
-                  items: controller.availableGroups.map((group) {
-                    return DropdownMenuItem(
-                      value: group,
-                      child: Text(
-                        group, 
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14),
+                      value: controller.selectedGroup,
+                      decoration: InputDecoration(
+                        labelText: 'Group',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
+                        isDense: true,
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      controller.filterByGroup(value);
-                    }
-                  },
-                )),
+                      isExpanded: true,
+                      items: controller.availableGroups.map((group) {
+                        return DropdownMenuItem(
+                          value: group,
+                          child: Text(
+                            group,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          controller.filterByGroup(value);
+                        }
+                      },
+                    )),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Sort Filter
               Expanded(
                 flex: 1,
                 child: Obx(() => DropdownButtonFormField<String>(
-                  value: controller.sortType.isEmpty ? 'Default' : controller.sortType,
-                  decoration: InputDecoration(
-                    labelText: 'Sort',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                    isDense: true,
-                  ),
-                  isExpanded: true,
-                  items: controller.availableSortTypes.map((sort) {
-                    return DropdownMenuItem(
-                      value: sort,
-                      child: Text(
-                        sort, 
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14),
+                      value: controller.sortType.isEmpty
+                          ? 'Default'
+                          : controller.sortType,
+                      decoration: InputDecoration(
+                        labelText: 'Sort',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
+                        isDense: true,
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      controller.sortParties(value == 'Default' ? '' : value);
-                    }
-                  },
-                )),
+                      isExpanded: true,
+                      items: controller.availableSortTypes.map((sort) {
+                        return DropdownMenuItem(
+                          value: sort,
+                          child: Text(
+                            sort,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          controller
+                              .sortParties(value == 'Default' ? '' : value);
+                        }
+                      },
+                    )),
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Zero Balance Filter
           Obx(() => CheckboxListTile(
-            title: Text(
-              'Exclude Zero Balance',
-              style: theme.textTheme.bodyMedium,
-            ),
-            value: controller.excludeZeroBalance,
-            onChanged: (value) {
-              controller.toggleExcludeZeroBalance(value ?? false);
-            },
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            dense: true,
-          )),
+                title: Text(
+                  'Exclude Zero Balance',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                value: controller.excludeZeroBalance,
+                onChanged: (value) {
+                  controller.toggleExcludeZeroBalance(value ?? false);
+                },
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              )),
         ],
       ),
     );
@@ -371,7 +380,8 @@ class _PartyListViewState extends State<PartyListView> {
     });
   }
 
-  Widget _buildSummaryCard(String title, String amount, Color color, ThemeData theme) {
+  Widget _buildSummaryCard(
+      String title, String amount, Color color, ThemeData theme) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -427,7 +437,7 @@ class _PartyListViewState extends State<PartyListView> {
         onTap: () async {
           print('🎯 === PARTY CARD CLICKED ===');
           print('📋 Party: ${party.byrNam} (${party.byrCd})');
-          
+
           try {
             // Show loading indicator
             Get.dialog(
@@ -436,26 +446,27 @@ class _PartyListViewState extends State<PartyListView> {
               ),
               barrierDismissible: false,
             );
-            
+
             // Fetch party payment details
-            final paymentDetails = await controller.getPartyPaymentDetails(party);
-            
+            final paymentDetails =
+                await controller.getPartyPaymentDetails(party);
+
             // Close loading dialog
             Get.back();
-            
+
             print('✅ Payment details fetched, navigating to details view');
-            
+
             // Navigate to party details view with the fetched data
             Get.to(() => PartyDetailsView(
-              party: party,
-              paymentDetails: paymentDetails,
-            ));
+                  party: party,
+                  paymentDetails: paymentDetails,
+                ));
           } catch (e) {
             // Close loading dialog
             Get.back();
-            
+
             print('❌ Error fetching payment details: $e');
-            
+
             // Show error dialog
             Get.dialog(
               AlertDialog(
@@ -498,11 +509,13 @@ class _PartyListViewState extends State<PartyListView> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: party.balanceColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: party.balanceColor.withOpacity(0.3)),
+                      border: Border.all(
+                          color: party.balanceColor.withOpacity(0.3)),
                     ),
                     child: Text(
                       controller.formatCurrency(party.balance),
@@ -546,7 +559,8 @@ class _PartyListViewState extends State<PartyListView> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(8),
@@ -580,7 +594,8 @@ class _PartyListViewState extends State<PartyListView> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
+            valueColor:
+                AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
           ),
           const SizedBox(height: 16),
           Text(

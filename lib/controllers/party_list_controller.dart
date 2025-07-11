@@ -5,7 +5,7 @@ import 'package:shopapp/services/party_list_service.dart';
 
 class PartyListController extends GetxController {
   final PartyListService _partyListService = PartyListService();
-  
+
   // Observable variables
   final _partyList = <PartyItem>[].obs;
   final _filteredPartyList = <PartyItem>[].obs;
@@ -18,13 +18,14 @@ class PartyListController extends GetxController {
     grandTotal: 0.0,
     totalParties: 0,
   ).obs;
-  
+
   // Search and filter variables
   final _searchQuery = ''.obs;
-  final _selectedGroup = 'Sundry Creditors'.obs; // Changed to match working React payload
+  final _selectedGroup =
+      'Sundry Creditors'.obs; // Changed to match working React payload
   final _sortType = ''.obs;
   final _excludeZeroBalance = false.obs;
-  
+
   // Getters
   List<PartyItem> get partyList => _partyList;
   List<PartyItem> get filteredPartyList => _filteredPartyList;
@@ -35,7 +36,7 @@ class PartyListController extends GetxController {
   String get selectedGroup => _selectedGroup.value;
   String get sortType => _sortType.value;
   bool get excludeZeroBalance => _excludeZeroBalance.value;
-  
+
   // Available groups for filtering
   final List<String> availableGroups = [
     'All Groups',
@@ -44,7 +45,7 @@ class PartyListController extends GetxController {
     'Cash Account',
     'Bank Account',
   ];
-  
+
   // Available sort types
   final List<String> availableSortTypes = [
     'Default',
@@ -66,21 +67,21 @@ class PartyListController extends GetxController {
     try {
       print('🔄 === LOADING PARTY LIST ===');
       print('📋 Requested groups: ${groups ?? _selectedGroup.value}');
-      
+
       _isLoading.value = true;
       _error.value = '';
-      
+
       final groupToLoad = groups ?? _selectedGroup.value;
       print('🏷️ Final group to load: $groupToLoad');
-      
+
       final response = await _partyListService.getPartyList(
         groups: groupToLoad == 'All Groups' ? '' : groupToLoad,
       );
-      
+
       _partyList.value = response.partyList;
       _applyFiltersAndSort();
       _calculateTotalSum();
-      
+
       print('✅ Successfully loaded ${_partyList.length} parties');
       print('📊 Total sum calculated: ${_totalSum.value.grandTotal}');
     } catch (e) {
@@ -114,22 +115,32 @@ class PartyListController extends GetxController {
 
   void _applyFiltersAndSort() {
     var filtered = List<PartyItem>.from(_partyList);
-    
+
     // Apply search filter
     if (_searchQuery.value.isNotEmpty) {
-      filtered = filtered.where((party) =>
-        party.byrNam.toLowerCase().contains(_searchQuery.value.toLowerCase()) ||
-        party.accAddress.toLowerCase().contains(_searchQuery.value.toLowerCase()) ||
-        party.byrCd.toLowerCase().contains(_searchQuery.value.toLowerCase()) ||
-        (party.phoneNo?.toLowerCase().contains(_searchQuery.value.toLowerCase()) ?? false)
-      ).toList();
+      filtered = filtered
+          .where((party) =>
+              party.byrNam
+                  .toLowerCase()
+                  .contains(_searchQuery.value.toLowerCase()) ||
+              party.accAddress
+                  .toLowerCase()
+                  .contains(_searchQuery.value.toLowerCase()) ||
+              party.byrCd
+                  .toLowerCase()
+                  .contains(_searchQuery.value.toLowerCase()) ||
+              (party.phoneNo
+                      ?.toLowerCase()
+                      .contains(_searchQuery.value.toLowerCase()) ??
+                  false))
+          .toList();
     }
-    
+
     // Apply zero balance filter
     if (_excludeZeroBalance.value) {
       filtered = filtered.where((party) => party.balance != 0.0).toList();
     }
-    
+
     // Apply sorting
     switch (_sortType.value) {
       case 'A-Z':
@@ -148,7 +159,7 @@ class PartyListController extends GetxController {
         // Keep original order
         break;
     }
-    
+
     _filteredPartyList.value = filtered;
   }
 
@@ -157,7 +168,7 @@ class PartyListController extends GetxController {
     double blueTotal = 0.0;
     double redTotal = 0.0;
     double grandTotal = 0.0;
-    
+
     for (var party in _partyList) {
       grandTotal += party.balance;
       switch (party.balColor.toUpperCase()) {
@@ -172,7 +183,7 @@ class PartyListController extends GetxController {
           break;
       }
     }
-    
+
     _totalSum.value = TotalSum(
       due: greenTotal,
       advance: blueTotal,
@@ -220,12 +231,14 @@ class PartyListController extends GetxController {
 
   // Get summary statistics
   Map<String, dynamic> getSummaryStats() {
-    final debtors = _partyList.where((p) => p.groups.contains('Debtors')).length;
-    final creditors = _partyList.where((p) => p.groups.contains('Creditors')).length;
+    final debtors =
+        _partyList.where((p) => p.groups.contains('Debtors')).length;
+    final creditors =
+        _partyList.where((p) => p.groups.contains('Creditors')).length;
     final positiveBalance = _partyList.where((p) => p.balance > 0).length;
     final negativeBalance = _partyList.where((p) => p.balance < 0).length;
     final zeroBalance = _partyList.where((p) => p.balance == 0).length;
-    
+
     return {
       'total': _partyList.length,
       'debtors': debtors,
@@ -237,26 +250,27 @@ class PartyListController extends GetxController {
   }
 
   // Fetch party payment details when party is clicked
-  Future<List<Map<String, dynamic>>> getPartyPaymentDetails(PartyItem party) async {
+  Future<List<Map<String, dynamic>>> getPartyPaymentDetails(
+      PartyItem party) async {
     try {
       print('🎯 === FETCHING PARTY PAYMENT DETAILS ===');
       print('📋 Party: ${party.byrNam} (${party.byrCd})');
       print('🔢 AccAutoID: ${party.accAutoID}');
-      
+
       // Important: First ensure we have a fresh party list (this establishes session)
       print('🔐 Ensuring session is active by calling party list first...');
       await loadPartyList();
-      
+
       print('✅ Session refreshed, now calling payment details...');
-      
+
       final response = await _partyListService.getPartyPaymentDetails(
         accName: party.byrNam,
         accCode: party.accAutoID,
       );
-      
+
       print('✅ Successfully fetched payment details for ${party.byrNam}');
       print('📊 Number of records: ${response.length}');
-      
+
       return response;
     } catch (e) {
       print('❌ Error fetching payment details for ${party.byrNam}: $e');

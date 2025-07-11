@@ -496,29 +496,45 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
                     icon: const Icon(Icons.clear),
                     onPressed: _clearPartySearch,
                   )
-                : _isSearchingParties
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : const Icon(Icons.search),
+                : IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () {
+                      _filterParties(_partyController.text);
+                    },
+                  ),
           ),
           onChanged: (value) {
             setState(() {
               _filterParties(value);
             });
           },
-          onTap: () {
+          onTap: () async {
             setState(() {
               _showPartyDropdown = true;
-              if (_partyController.text.isEmpty) {
-                _filteredPartyList = _partyList;
-              }
             });
+            if (_partyList.isEmpty) {
+              setState(() {
+                _isLoadingParties = true;
+              });
+              try {
+                final parties = await _apiService.getPartyList();
+                setState(() {
+                  _partyList = parties;
+                  _filteredPartyList = parties;
+                });
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error loading party list: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } finally {
+                setState(() {
+                  _isLoadingParties = false;
+                });
+              }
+            }
           },
           validator: (value) {
             return _selectedParty == null ? 'Please select a party' : null;
@@ -610,47 +626,24 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
   }
 
   void _filterParties(String query) {
-    // Cancel previous search timer
-    _searchDebounceTimer?.cancel();
-
+    // Only filter locally, no debounce or API call
     if (query.isEmpty) {
-      // If query is empty, show all parties from initial load
       setState(() {
         _filteredPartyList = _partyList;
         _showPartyDropdown = true;
       });
     } else {
-      // Debounce the search to avoid too many API calls
-      _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
-        print("🔍 SEARCHING PARTIES: '$query'");
-        setState(() {
-          _isSearchingParties = true;
-          _showPartyDropdown = true;
-        });
-
-        try {
-          await _loadPartyList(searchQuery: query);
-        } catch (e) {
-          print("❌ Search error: $e");
-          // On search error, fall back to local filtering
-          setState(() {
-            _filteredPartyList = _partyList.where((party) {
-              final name = party['ByrNam']?.toString().toLowerCase() ?? '';
-              final address =
-                  party['AccAddress']?.toString().toLowerCase() ?? '';
-              final id = party['ID']?.toString() ?? '';
-              final queryLower = query.toLowerCase();
-
-              return name.contains(queryLower) ||
-                  address.contains(queryLower) ||
-                  id.contains(queryLower);
-            }).toList();
-          });
-        } finally {
-          setState(() {
-            _isSearchingParties = false;
-          });
-        }
+      setState(() {
+        final queryLower = query.toLowerCase();
+        _filteredPartyList = _partyList.where((party) {
+          final name = party['ByrNam']?.toString().toLowerCase() ?? '';
+          final address = party['AccAddress']?.toString().toLowerCase() ?? '';
+          final id = party['ID']?.toString() ?? '';
+          return name.contains(queryLower) ||
+              address.contains(queryLower) ||
+              id.contains(queryLower);
+        }).toList();
+        _showPartyDropdown = true;
       });
     }
   }
