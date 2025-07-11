@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:shopapp/model/receipt_model.dart';
 import 'package:shopapp/services/api_service.dart';
+import 'dart:async'; // Added for Timer
 
 class ReceiptEntryView extends StatefulWidget {
   final int? gcrid;
@@ -38,12 +39,16 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
   bool _isLoading = false;
   bool _isProcessing = false;
   bool _isLoadingParties = false;
-  
+  bool _isSearchingParties = false;
+
   // Party selection
   List<dynamic> _partyList = [];
   List<dynamic> _filteredPartyList = [];
   dynamic _selectedParty;
   bool _showPartyDropdown = false;
+
+  // Search debouncing
+  Timer? _searchDebounceTimer;
 
   final TextEditingController _compRefController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
@@ -63,15 +68,16 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
     _loadPartyList(); // Load party list for dropdown
   }
 
-  Future<void> _loadPartyList() async {
+  Future<void> _loadPartyList({String? searchQuery}) async {
     try {
       print("🎭 LOADING PARTY LIST - START");
       print("   Widget party: '${widget.party ?? 'null'}'");
       print("   Widget partyId: ${widget.partyId ?? 'null'}");
-      
+      print("   Search query: '${searchQuery ?? 'null'}'");
+
       setState(() => _isLoadingParties = true);
-      final parties = await _apiService.getPartyList();
-      
+      final parties = await _apiService.getPartyList(searchByName: searchQuery);
+
       print("🎭 PARTY LIST LOADED:");
       print("   Total parties: ${parties.length}");
       if (parties.isNotEmpty) {
@@ -80,7 +86,7 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
           final party = parties[i];
           print("     [$i] ID: ${party['ID']}, Name: '${party['ByrNam']}'");
         }
-        
+
         // Show available keys in party objects
         if (parties.isNotEmpty) {
           print("   Available party fields: ${parties[0].keys.toList()}");
@@ -88,37 +94,47 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
       } else {
         print("   ⚠️ No parties returned from API!");
       }
-      
+
       setState(() {
-        _partyList = parties;
-        _filteredPartyList = parties; // Initialize filtered list
-        
+        if (searchQuery != null && searchQuery.isNotEmpty) {
+          // For search results, replace the filtered list
+          _filteredPartyList = parties;
+        } else {
+          // For initial load, set both lists
+          _partyList = parties;
+          _filteredPartyList = parties; // Initialize filtered list
+        }
+
         // Try to select party based on widget parameters OR current receipt data
         String partyToFind = widget.party ?? _receipt.party;
         int partyIdToFind = widget.partyId ?? _receipt.partyId;
-        
+
         if (partyToFind.isNotEmpty || partyIdToFind > 0) {
           print("🔍 SEARCHING FOR PARTY TO SELECT:");
           print("   Looking for party name: '$partyToFind'");
           print("   Looking for party ID: $partyIdToFind");
-          
+
           _selectedParty = parties.firstWhere(
-            (party) => party['ByrNam'] == partyToFind || party['ID'] == partyIdToFind,
+            (party) =>
+                party['ByrNam'] == partyToFind || party['ID'] == partyIdToFind,
             orElse: () => <String, dynamic>{},
           );
-          
+
           if (_selectedParty != null && _selectedParty.isNotEmpty) {
-            print("✅ Found and selected party: '${_selectedParty['ByrNam']}' (ID: ${_selectedParty['ID']})");
+            print(
+                "✅ Found and selected party: '${_selectedParty['ByrNam']}' (ID: ${_selectedParty['ID']})");
             // Update receipt object with selected party info
             _receipt.party = _selectedParty['ByrNam'] ?? '';
             _receipt.partyId = _selectedParty['ID'] ?? 0;
             _partyController.text = _receipt.party;
           } else {
-            print("❌ Could not find party with name: '$partyToFind' or ID: $partyIdToFind");
+            print(
+                "❌ Could not find party with name: '$partyToFind' or ID: $partyIdToFind");
             // Reset selected party
             _selectedParty = null;
             // List all party names for debugging
-            print("   Available party names: ${parties.map((p) => "'${p['ByrNam']}'").take(10).join(', ')}${parties.length > 10 ? '...' : ''}");
+            print(
+                "   Available party names: ${parties.map((p) => "'${p['ByrNam']}'").take(10).join(', ')}${parties.length > 10 ? '...' : ''}");
           }
         } else {
           print("📝 New receipt - no party pre-selected");
@@ -126,7 +142,7 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
           _filteredPartyList = _partyList;
         }
       });
-      
+
       print("🎭 PARTY LIST LOADING - COMPLETE");
     } catch (e) {
       print('❌ PARTY LIST ERROR: $e');
@@ -180,16 +196,17 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
     try {
       setState(() => _isLoading = true);
       print("🔄 Loading receipt details for GCRID: ${widget.gcrid}");
-      
-      final receipt = await _apiService.getGreenCardamomReceiptByCode(widget.gcrid!);
-      
+
+      final receipt =
+          await _apiService.getGreenCardamomReceiptByCode(widget.gcrid!);
+
       if (receipt != null) {
         print("📋 Loaded receipt: ${receipt.party} (ID: ${receipt.partyId})");
         setState(() {
           _receipt = receipt;
           _updateControllers();
         });
-        
+
         // Wait for party list to be loaded if it's not already loaded
         await _ensurePartySelection(receipt);
       } else {
@@ -209,29 +226,33 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
     print("🔍 ENSURING PARTY SELECTION:");
     print("   Receipt party: '${receipt.party}' (ID: ${receipt.partyId})");
     print("   Party list loaded: ${_partyList.isNotEmpty}");
-    
+
     // Wait for party list to load if it's still loading
     int attempts = 0;
-    while (_isLoadingParties && attempts < 50) { // Wait up to 5 seconds
+    while (_isLoadingParties && attempts < 50) {
+      // Wait up to 5 seconds
       await Future.delayed(Duration(milliseconds: 100));
       attempts++;
     }
-    
+
     if (_partyList.isNotEmpty && receipt.party.isNotEmpty) {
       final foundParty = _partyList.firstWhere(
-        (party) => party['ID'] == receipt.partyId || party['ByrNam'] == receipt.party,
+        (party) =>
+            party['ID'] == receipt.partyId || party['ByrNam'] == receipt.party,
         orElse: () => <String, dynamic>{},
       );
-      
+
       if (foundParty.isNotEmpty) {
         setState(() {
           _selectedParty = foundParty;
         });
-        print("✅ Auto-selected party from loaded receipt: '${foundParty['ByrNam']}' (ID: ${foundParty['ID']})");
+        print(
+            "✅ Auto-selected party from loaded receipt: '${foundParty['ByrNam']}' (ID: ${foundParty['ID']})");
       } else {
         print("❌ Could not find party in list:");
         print("   Looking for: '${receipt.party}' (ID: ${receipt.partyId})");
-        print("   Available parties: ${_partyList.map((p) => "'${p['ByrNam']}' (ID: ${p['ID']})").take(5).join(', ')}${_partyList.length > 5 ? '...' : ''}");
+        print(
+            "   Available parties: ${_partyList.map((p) => "'${p['ByrNam']}' (ID: ${p['ID']})").take(5).join(', ')}${_partyList.length > 5 ? '...' : ''}");
       }
     } else {
       print("⚠️ Cannot select party: party list empty or receipt party empty");
@@ -252,6 +273,7 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
 
   @override
   void dispose() {
+    _searchDebounceTimer?.cancel();
     _compRefController.dispose();
     _dateController.dispose();
     _refNoController.dispose();
@@ -410,7 +432,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
                         const SizedBox(width: 12),
                         Text(
                           'Loading parties...',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.secondary),
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.colorScheme.secondary),
                         ),
                       ],
                     ),
@@ -424,7 +447,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+                border: Border.all(
+                    color: theme.colorScheme.primary.withOpacity(0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -437,7 +461,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  if (_selectedParty['AccAddress'] != null && _selectedParty['AccAddress'].toString().isNotEmpty)
+                  if (_selectedParty['AccAddress'] != null &&
+                      _selectedParty['AccAddress'].toString().isNotEmpty)
                     Text(
                       'Address: ${_selectedParty['AccAddress']}',
                       style: theme.textTheme.bodySmall,
@@ -463,28 +488,28 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
           controller: _partyController,
           decoration: InputDecoration(
             border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             hintText: 'Search and select party...',
             suffixIcon: _selectedParty != null
                 ? IconButton(
                     icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      setState(() {
-                        _selectedParty = null;
-                        _receipt.party = '';
-                        _receipt.partyId = 0;
-                        _partyController.clear();
-                        _showPartyDropdown = false;
-                        _filteredPartyList = _partyList;
-                      });
-                    },
+                    onPressed: _clearPartySearch,
                   )
-                : const Icon(Icons.search),
+                : _isSearchingParties
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : const Icon(Icons.search),
           ),
           onChanged: (value) {
             setState(() {
               _filterParties(value);
-              _showPartyDropdown = value.isNotEmpty;
             });
           },
           onTap: () {
@@ -510,74 +535,136 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
               ),
               color: theme.colorScheme.surface,
             ),
-            child: _filteredPartyList.isNotEmpty
-                ? ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _filteredPartyList.length,
-                    itemBuilder: (context, index) {
-                      final party = _filteredPartyList[index];
-                      return ListTile(
-                        title: Text(
-                          party['ByrNam'] ?? 'Unknown Party',
-                          style: theme.textTheme.bodyLarge,
+            child: _isSearchingParties
+                ? Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
-                        subtitle: party['AccAddress'] != null && party['AccAddress'].toString().isNotEmpty
-                            ? Text(
-                                party['AccAddress'],
-                                style: theme.textTheme.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              )
-                            : null,
-                        trailing: Text(
-                          'ID: ${party['ID']}',
-                          style: theme.textTheme.bodySmall?.copyWith(
+                        const SizedBox(width: 12),
+                        Text(
+                          'Searching parties...',
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.secondary,
                           ),
                         ),
-                        onTap: () {
-                          setState(() {
-                            _selectedParty = party;
-                            _receipt.party = party['ByrNam'] ?? '';
-                            _receipt.partyId = party['ID'] ?? 0;
-                            _partyController.text = _receipt.party;
-                            _showPartyDropdown = false;
-                          });
-                        },
-                      );
-                    },
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'No parties found matching "${_partyController.text}"',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.secondary,
-                        fontStyle: FontStyle.italic,
-                      ),
-                      textAlign: TextAlign.center,
+                      ],
                     ),
-                  ),
+                  )
+                : _filteredPartyList.isNotEmpty
+                    ? ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _filteredPartyList.length,
+                        itemBuilder: (context, index) {
+                          final party = _filteredPartyList[index];
+                          return ListTile(
+                            title: Text(
+                              party['ByrNam'] ?? 'Unknown Party',
+                              style: theme.textTheme.bodyLarge,
+                            ),
+                            subtitle: party['AccAddress'] != null &&
+                                    party['AccAddress'].toString().isNotEmpty
+                                ? Text(
+                                    party['AccAddress'],
+                                    style: theme.textTheme.bodySmall,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  )
+                                : null,
+                            trailing: Text(
+                              'ID: ${party['ID']}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.secondary,
+                              ),
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedParty = party;
+                                _receipt.party = party['ByrNam'] ?? '';
+                                _receipt.partyId = party['ID'] ?? 0;
+                                _partyController.text = _receipt.party;
+                                _showPartyDropdown = false;
+                              });
+                            },
+                          );
+                        },
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'No parties found matching "${_partyController.text}"',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.secondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
           ),
       ],
     );
   }
 
   void _filterParties(String query) {
+    // Cancel previous search timer
+    _searchDebounceTimer?.cancel();
+
     if (query.isEmpty) {
-      _filteredPartyList = _partyList;
+      // If query is empty, show all parties from initial load
+      setState(() {
+        _filteredPartyList = _partyList;
+        _showPartyDropdown = true;
+      });
     } else {
-      _filteredPartyList = _partyList.where((party) {
-        final name = party['ByrNam']?.toString().toLowerCase() ?? '';
-        final address = party['AccAddress']?.toString().toLowerCase() ?? '';
-        final id = party['ID']?.toString() ?? '';
-        final queryLower = query.toLowerCase();
-        
-        return name.contains(queryLower) || 
-               address.contains(queryLower) || 
-               id.contains(queryLower);
-      }).toList();
+      // Debounce the search to avoid too many API calls
+      _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () async {
+        print("🔍 SEARCHING PARTIES: '$query'");
+        setState(() {
+          _isSearchingParties = true;
+          _showPartyDropdown = true;
+        });
+
+        try {
+          await _loadPartyList(searchQuery: query);
+        } catch (e) {
+          print("❌ Search error: $e");
+          // On search error, fall back to local filtering
+          setState(() {
+            _filteredPartyList = _partyList.where((party) {
+              final name = party['ByrNam']?.toString().toLowerCase() ?? '';
+              final address =
+                  party['AccAddress']?.toString().toLowerCase() ?? '';
+              final id = party['ID']?.toString() ?? '';
+              final queryLower = query.toLowerCase();
+
+              return name.contains(queryLower) ||
+                  address.contains(queryLower) ||
+                  id.contains(queryLower);
+            }).toList();
+          });
+        } finally {
+          setState(() {
+            _isSearchingParties = false;
+          });
+        }
+      });
     }
+  }
+
+  void _clearPartySearch() {
+    setState(() {
+      _selectedParty = null;
+      _receipt.party = '';
+      _receipt.partyId = 0;
+      _partyController.clear();
+      _showPartyDropdown = false;
+      _filteredPartyList = _partyList;
+      _searchDebounceTimer?.cancel();
+    });
   }
 
   Widget _buildQuantityRateRow(ThemeData theme) {
@@ -698,7 +785,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
     );
   }
 
-  InputDecoration _buildInputDecoration(String label, ThemeData theme, {bool filled = false, Color? fillColor}) {
+  InputDecoration _buildInputDecoration(String label, ThemeData theme,
+      {bool filled = false, Color? fillColor}) {
     return InputDecoration(
       labelText: label,
       filled: filled,
@@ -765,14 +853,16 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
   Future<void> _handleSubmit() async {
     print("📝 FORM SUBMIT TRIGGERED");
     print("   Form valid: ${_formKey.currentState?.validate() ?? false}");
-    print("   Selected party before validation: ${_selectedParty != null ? "'${_selectedParty['ByrNam']}' (ID: ${_selectedParty['ID']})" : 'null'}");
-    
+    print(
+        "   Selected party before validation: ${_selectedParty != null ? "'${_selectedParty['ByrNam']}' (ID: ${_selectedParty['ID']})" : 'null'}");
+
     if (_formKey.currentState?.validate() ?? false) {
       try {
         setState(() => _isProcessing = true);
 
         print("📋 UPDATING RECEIPT OBJECT:");
-        print("   Before update - Party: '${_receipt.party}' (ID: ${_receipt.partyId})");
+        print(
+            "   Before update - Party: '${_receipt.party}' (ID: ${_receipt.partyId})");
 
         // Update receipt object with latest form values
         _receipt.compRefNo = _compRefController.text;
@@ -780,7 +870,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
         _receipt.refNo = _refNoController.text;
         _receipt.qty = double.tryParse(_qtyController.text) ?? 0;
         _receipt.rate = double.tryParse(_rateController.text) ?? 0;
-        _receipt.processingCharges = double.tryParse(_processingChargesController.text) ?? 0;
+        _receipt.processingCharges =
+            double.tryParse(_processingChargesController.text) ?? 0;
         _receipt.numberOfBags = int.tryParse(_numberOfBagsController.text) ?? 1;
         _receipt.remark = _remarkController.text;
 
@@ -788,7 +879,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
         if (_selectedParty != null) {
           _receipt.party = _selectedParty['ByrNam'] ?? '';
           _receipt.partyId = _selectedParty['ID'] ?? 0;
-          print("✅ Party set from dropdown: '${_receipt.party}' (ID: ${_receipt.partyId})");
+          print(
+              "✅ Party set from dropdown: '${_receipt.party}' (ID: ${_receipt.partyId})");
         } else {
           print("⚠️ No party selected in dropdown!");
         }
@@ -822,8 +914,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
           Navigator.pop(context, true);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(_receipt.gcrid == 0 
-                  ? 'Receipt created successfully' 
+              content: Text(_receipt.gcrid == 0
+                  ? 'Receipt created successfully'
                   : 'Receipt updated successfully'),
               backgroundColor: Colors.green,
             ),
@@ -836,7 +928,8 @@ class _ReceiptEntryViewState extends State<ReceiptEntryView> {
         print("❌ Error type: ${e.runtimeType}");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to ${_receipt.gcrid == 0 ? "create" : "update"} receipt: ${e.toString()}'),
+            content: Text(
+                'Failed to ${_receipt.gcrid == 0 ? "create" : "update"} receipt: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );

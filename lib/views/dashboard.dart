@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shopapp/views/partymaster/party_list_view.dart';
 import 'package:shopapp/views/cardamom/cardamomdashboard.dart';
+import 'package:shopapp/views/cardamom/transaction_view.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({super.key});
@@ -24,9 +25,7 @@ class Dashboard extends StatelessWidget {
         centerTitle: false,
         actions: [
           IconButton(
-            onPressed: () {
-              // TODO: Add settings or logout functionality
-            },
+            onPressed: () {},
             icon: Icon(
               Icons.account_circle_outlined,
               color: theme.colorScheme.onSurface,
@@ -105,7 +104,7 @@ class Dashboard extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // Features Grid
+              // Features Section
               Text(
                 'Quick Actions',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -116,25 +115,22 @@ class Dashboard extends StatelessWidget {
 
               const SizedBox(height: 12),
 
-              GridView.count(
-                crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+              // Responsive Wrap for Quick Actions
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
                 children: [
-                  _buildModernFeatureCard(
+                  _buildQuickActionCard(
                     context: context,
                     title: 'Transactions',
                     subtitle: 'Manage orders & receipts',
                     icon: Icons.receipt_long_rounded,
                     color: const Color(0xFF4CAF50),
                     onTap: () {
-                      Get.to(() => const CardamomDashboard());
+                      Get.to(() => TransactionView());
                     },
                   ),
-                  _buildModernFeatureCard(
+                  _buildQuickActionCard(
                     context: context,
                     title: 'Parties',
                     subtitle: 'Customer management',
@@ -142,6 +138,7 @@ class Dashboard extends StatelessWidget {
                     color: const Color(0xFF2196F3),
                     onTap: () => Get.to(() => const PartyListView()),
                   ),
+                  // Add more cards here if needed
                 ],
               ),
 
@@ -153,8 +150,8 @@ class Dashboard extends StatelessWidget {
     );
   }
 
-  // Modern, centered, visually appealing feature card
-  Widget _buildModernFeatureCard({
+  // Compact, modern, responsive quick action card
+  Widget _buildQuickActionCard({
     required BuildContext context,
     required String title,
     required String subtitle,
@@ -163,71 +160,74 @@ class Dashboard extends StatelessWidget {
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.10),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        double cardWidth = (constraints.maxWidth > 0)
+            ? (constraints.maxWidth < 400 ? constraints.maxWidth : 160)
+            : 160;
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              width: cardWidth,
+              constraints: const BoxConstraints(minWidth: 140, maxWidth: 180),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(0.10),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+                border: Border.all(
+                  color: color.withOpacity(0.18),
+                  width: 1.2,
+                ),
               ),
-            ],
-            border: Border.all(
-              color: color.withOpacity(0.18),
-              width: 1.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Icon(
+                      icon,
+                      size: 32,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.18),
-                  shape: BoxShape.circle,
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Icon(
-                  icon,
-                  size: 44,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  fontSize: 18,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  fontSize: 13,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -27,6 +27,19 @@ class Receipt {
   });
 
   factory Receipt.fromJson(Map<String, dynamic> json) {
+    int parseNumberOfBags(dynamic value) {
+      if (value == null) return 1;
+      if (value is int) return value;
+      if (value is double) return value.toInt();
+      if (value is String) {
+        final d = double.tryParse(value);
+        if (d != null) return d.toInt();
+        final i = int.tryParse(value);
+        if (i != null) return i;
+      }
+      return 1;
+    }
+
     return Receipt(
       gcrid: json['GCRID'] ?? 0,
       compRefNo: json['CompRefNo']?.toString() ?? '',
@@ -38,7 +51,7 @@ class Receipt {
       rate: double.tryParse(json['Rate']?.toString() ?? '0') ?? 0,
       processingCharges:
           double.tryParse(json['ProcAmount']?.toString() ?? '0') ?? 0,
-      numberOfBags: int.tryParse(json['NumberOfBags']?.toString() ?? '1') ?? 1,
+      numberOfBags: parseNumberOfBags(json['Works']),
       remark: json['GCRecRemarks'] ?? '',
     );
   }
@@ -54,7 +67,7 @@ class Receipt {
       'GCRecQty': qty,
       'Rate': rate,
       'ProcAmount': processingCharges,
-      'NumberOfBags': numberOfBags,
+      'Works': numberOfBags,
       'GCRecRemarks': remark,
     };
   }

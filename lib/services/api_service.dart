@@ -235,7 +235,8 @@ class ApiService {
   /// 1. Party List API - Get Party and Balance List
   /// Equivalent to: listAPI.getPartyList()
   /// Backend: WebDataProcessingReact.aspx
-  Future<List<dynamic>> getPartyList({String? route}) async {
+  Future<List<dynamic>> getPartyList(
+      {String? route, String? searchByName}) async {
     try {
       // Get year from storage or use current year
       final currentYear = DateTime.now().year.toString();
@@ -244,6 +245,7 @@ class ApiService {
       print(
           "   URL: https://cardamombe.magnussoftech.in/WebDataProcessingReact.aspx");
       print("   Route parameter: " + (route ?? 'Not specified'));
+      print("   Search by name: " + (searchByName ?? 'Not specified'));
       print("   Current year: $currentYear");
 
       final formData = FormData.fromMap({
@@ -254,7 +256,7 @@ class ApiService {
         'ReqAcaStart': currentYear,
         'ReqGroups': 'Sundry Debtors',
         'ReqCodes': '',
-        'ReqByrName': '',
+        'ReqByrName': searchByName ?? '',
         'ReqRoute': route ?? '',
       });
 
@@ -449,6 +451,8 @@ class ApiService {
   /// Backend: WebServiceCardamom.aspx
   Future<Receipt?> getGreenCardamomReceiptByCode(int gcrid) async {
     try {
+      print("🔍 Getting receipt details for GCRID: $gcrid");
+
       var formData = FormData.fromMap({
         'title': 'GetGreenCardamomReceiptByCode',
         'description': '',
@@ -456,19 +460,67 @@ class ApiService {
       });
 
       final result = await getFormattedResponse(formData);
+      print("📥 API Response structure: ${result.keys.toList()}");
 
-      if (result['success'] &&
-          result['data'] is List &&
-          result['data'].isNotEmpty) {
-        return Receipt.fromJson(result['data'][0]);
+      if (result['success'] && result['data'] != null) {
+        final data = result['data'];
+        print("📋 Data type: ${data.runtimeType}");
+
+        // Handle the nested structure: userdata[0].JSONData1
+        if (data is Map && data.containsKey('userdata')) {
+          final userdata = data['userdata'];
+          print("📦 Found userdata: ${userdata.runtimeType}");
+
+          if (userdata is List && userdata.isNotEmpty) {
+            final firstItem = userdata[0];
+            print("📄 First userdata item keys: ${firstItem.keys.toList()}");
+
+            if (firstItem.containsKey('JSONData1') &&
+                firstItem['JSONData1'] != null) {
+              final jsonData1String = firstItem['JSONData1'];
+              print(
+                  "📄 JSONData1 string: ${jsonData1String.length > 100 ? jsonData1String.substring(0, 100) + '...' : jsonData1String}");
+
+              try {
+                final jsonData1 = json.decode(jsonData1String);
+                print("✅ Parsed JSONData1: ${jsonData1.runtimeType}");
+
+                if (jsonData1 is List && jsonData1.isNotEmpty) {
+                  final receiptData = jsonData1[0];
+                  print("📋 Receipt data keys: ${receiptData.keys.toList()}");
+                  print("📦 Works field value: ${receiptData['Works']}");
+
+                  return Receipt.fromJson(receiptData);
+                } else {
+                  print("⚠️ JSONData1 is not a list or is empty");
+                }
+              } catch (e) {
+                print("❌ Error parsing JSONData1: $e");
+                throw Exception('Failed to parse receipt data: $e');
+              }
+            } else {
+              print("⚠️ JSONData1 not found in userdata item");
+            }
+          } else {
+            print("⚠️ userdata is not a list or is empty");
+          }
+        }
+        // Fallback: try direct data structure
+        else if (data is List && data.isNotEmpty) {
+          print("📋 Using direct data structure");
+          return Receipt.fromJson(data[0]);
+        }
       }
 
       if (result['error'] != null) {
+        print("❌ API Error: ${result['error']}");
         throw Exception(result['error']);
       }
 
+      print("⚠️ No receipt data found");
       return null;
     } catch (e) {
+      print("❌ Error in getGreenCardamomReceiptByCode: $e");
       throw Exception('Failed to load receipt details: $e');
     }
   }
@@ -489,7 +541,8 @@ class ApiService {
         "Rate: ${receipt.rate}\n"
         "ReceiptAmount: ${receipt.processingCharges}\n"
         "ReceiptRemarks: ${receipt.remark}\n"
-        "RefNo: ${receipt.refNo}\n");
+        "RefNo: ${receipt.refNo}\n"
+        "NumberOfBags: ${receipt.numberOfBags}");
     try {
       // Convert date to the expected format with milliseconds
       DateTime parsedDate = DateTime.now();
@@ -540,7 +593,7 @@ class ApiService {
           "StkDateStr": "",
           "StkQty": 0,
           "StockLocation": "",
-          "Works": 1
+          "Works": receipt.numberOfBags
         }
       ];
 
